@@ -37,7 +37,9 @@ CORS(app, origins=[
 STATE_CONFIGS = {
     'ny': {
         'name': 'New York',
+        'module': 'new_york',
         'forms': {
+            'ud1': 'generate_ud1',
             'ud4': 'generate_ud4',
             'ud5': 'generate_ud5',
             'ud6': 'generate_ud6',
@@ -49,12 +51,14 @@ STATE_CONFIGS = {
             'ud14': 'generate_ud14',
             'ud15': 'generate_ud15',
         },
+        'phase1': ['ud1'],
         'phase2': ['ud5', 'ud6', 'ud7', 'ud9', 'ud10', 'ud11', 'ud12'],
         'phase3': ['ud14', 'ud15'],
     },
     # Future: Nevada, California, etc.
     # 'nv': {
     #     'name': 'Nevada',
+    #     'module': 'nevada',
     #     'forms': {
     #         'complaint': 'generate_complaint',
     #         'decree': 'generate_decree',
@@ -78,12 +82,14 @@ def get_generator(state, form_name):
     if state not in STATE_CONFIGS:
         raise ValueError(f"Unsupported state: {state}")
     
-    state_module = state.replace('-', '_')  # ny-forms -> ny_forms
+    config = STATE_CONFIGS[state]
     
-    if form_name not in STATE_CONFIGS[state]['forms']:
+    if form_name not in config['forms']:
         raise ValueError(f"Unknown form '{form_name}' for state '{state}'")
     
-    generator_module_name = STATE_CONFIGS[state]['forms'][form_name]
+    # Use explicit module name from config, fallback to state key
+    state_module = config.get('module', state)
+    generator_module_name = config['forms'][form_name]
     
     try:
         # Import: states.new_york.generate_ud6
@@ -248,6 +254,10 @@ def generate_phase3_package(state):
 
 
 # Legacy routes for backward compatibility (redirect to ny)
+@app.route('/generate/ud1', methods=['POST'])
+def legacy_ud1():
+    return generate_form('ny', 'ud1')
+
 @app.route('/generate/ud4', methods=['POST'])
 def legacy_ud4():
     return generate_form('ny', 'ud4')
