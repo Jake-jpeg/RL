@@ -66,58 +66,22 @@ def generate_ud12(data, output_path):
     c.drawString(MARGIN_LEFT, y, f"COUNTY OF {county_upper}")
     y -= LINE_HEIGHT * 1  # Reduced from 2 to 1
     
-    # Caption box
-    c.setFont("Times-Roman", 12)
-    box_top = y
-    box_left = MARGIN_LEFT
-    box_right = MARGIN_LEFT + 230
-    box_height = LINE_HEIGHT * 8
-    box_bottom = box_top - box_height
-    
-    # Draw box borders (no left side - top, right, bottom only)
-    c.setLineWidth(0.5)
-    c.line(box_left, box_top, box_right, box_top)
-    c.line(box_right, box_top, box_right, box_bottom)
-    c.line(box_left, box_bottom, box_right, box_bottom)
-    
-    # Party names inside box
-    inner_y = box_top - LINE_HEIGHT * 1.5
-    c.drawString(box_left + 10, inner_y, f"{plaintiff_name},")
-    inner_y -= LINE_HEIGHT
-    c.setFont("Times-Italic", 12)
-    c.drawString(box_left + 30, inner_y, "Plaintiff,")
-    
-    inner_y -= LINE_HEIGHT * 1.5
+    # Caption - dashed line format
+    c.setFont("Times-Roman", 10)
+    c.drawString(MARGIN_LEFT, y, "-" * 62 + "X")
+    y -= LINE_HEIGHT
     
     c.setFont("Times-Roman", 12)
-    c.drawString(box_left + 50, inner_y, "-against-")
-    
-    inner_y -= LINE_HEIGHT * 1.5
-    
-    defendant_name = data.get('defendantName', '').strip()
-    if defendant_name:
-        c.drawString(box_left + 10, inner_y, f"{defendant_name},")
-    else:
-        c.drawString(box_left + 10, inner_y, "_______________________,")
-    inner_y -= LINE_HEIGHT
-    c.setFont("Times-Italic", 12)
-    c.drawString(box_left + 30, inner_y, "Defendant.")
+    c.drawString(MARGIN_LEFT, y, f"{plaintiff_name},")
     
     # Right side - Index No. and document title
-    right_x = box_right + 20
-    right_y = box_top - LINE_HEIGHT * 1.5
+    right_x = PAGE_WIDTH/2 + 95
     
     c.setFont("Times-Roman", 12)
     if index_number:
-        c.drawString(right_x, right_y, f"Index No.: {index_number}")
+        c.drawString(right_x, y, f"Index No.: {index_number}")
     else:
-        c.drawString(right_x, right_y, "Index No.: _______________")
-    right_y -= LINE_HEIGHT * 2.5
-    
-    # Document title
-    c.setFont("Times-Bold", 12)
-    c.drawString(right_x, right_y, "PART 130 CERTIFICATION")
-    
+        c.drawString(right_x, y, "Index No.: _______________")
     y -= LINE_HEIGHT
     
     c.setFont("Times-Italic", 12)
@@ -126,8 +90,13 @@ def generate_ud12(data, output_path):
     
     c.setFont("Times-Roman", 12)
     c.drawString(MARGIN_LEFT + 80, y, "- against -")
+    
+    # Document title on right side
+    c.setFont("Times-Bold", 12)
+    c.drawString(right_x, y, "PART 130 CERTIFICATION")
     y -= LINE_HEIGHT * 1.5
     
+    defendant_name = data.get('defendantName', '').strip()
     c.setFont("Times-Roman", 12)
     if defendant_name:
         c.drawString(MARGIN_LEFT, y, f"{defendant_name},")
