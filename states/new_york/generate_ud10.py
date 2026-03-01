@@ -481,7 +481,7 @@ def generate_ud10(data, output_path):
     # Signature line - right-aligned, proper spacing
     sig_line_start = PAGE_WIDTH / 2 + 20
     sig_line_end = PAGE_WIDTH - MARGIN_RIGHT
-    c.setLineWidth(0.5)
+    c.setLineWidth(0.25)
     c.line(sig_line_start, y, sig_line_end, y)
     y -= LINE_HEIGHT * 1.2
     

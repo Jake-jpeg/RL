@@ -317,14 +317,16 @@ def generate_ud6(data, output_path):
     y = draw_wrapped_text(c, affirm_text, MARGIN_LEFT, y, CONTENT_WIDTH)
     y -= LINE_HEIGHT * 3
     
-    # Signature line
-    c.line(MARGIN_LEFT, y, MARGIN_LEFT + 250, y)
+    # Signature line - right side
+    sig_x = PAGE_WIDTH / 2 + 20
+    c.setLineWidth(0.25)
+    c.line(sig_x, y, PAGE_WIDTH - MARGIN_RIGHT, y)
     y -= LINE_HEIGHT
     c.setFont("Times-Italic", 12)
-    c.drawString(MARGIN_LEFT, y, "Plaintiff's Signature")
+    c.drawString(sig_x, y, "Plaintiff's Signature")
     y -= LINE_HEIGHT
     c.setFont("Times-Roman", 12)
-    c.drawString(MARGIN_LEFT, y, plaintiff_name)
+    c.drawString(sig_x, y, plaintiff_name)
     
     # Footer - Form ID in bottom margin (below content area)
     c.setFont("Times-Roman", 10)

@@ -186,14 +186,16 @@ def generate_ud4(data, output_path):
     y = draw_wrapped_text(c, affirm_text, MARGIN_LEFT, y, CONTENT_WIDTH, "Times-Roman", 12)
     y -= LINE_HEIGHT * 3
     
-    # Signature line
-    c.line(MARGIN_LEFT, y, MARGIN_LEFT + 250, y)
+    # Signature line - right side
+    sig_x = PAGE_WIDTH / 2 + 20
+    c.setLineWidth(0.25)
+    c.line(sig_x, y, PAGE_WIDTH - MARGIN_RIGHT, y)
     y -= LINE_HEIGHT
     c.setFont("Times-Roman", 12)
-    c.drawString(MARGIN_LEFT, y, plaintiff_name)
+    c.drawString(sig_x, y, plaintiff_name)
     y -= LINE_HEIGHT
     c.setFont("Times-Italic", 10)
-    c.drawString(MARGIN_LEFT, y, "Plaintiff's Signature")
+    c.drawString(sig_x, y, "Plaintiff's Signature")
     
     # Footer
     c.setFont("Times-Roman", 10)
@@ -274,10 +276,12 @@ def generate_ud4(data, output_path):
     y = draw_wrapped_text(c, affirm_text, MARGIN_LEFT, y, CONTENT_WIDTH)
     y -= LINE_HEIGHT * 2
     
-    # Server signature
-    c.line(MARGIN_LEFT, y, MARGIN_LEFT + 250, y)
+    # Server signature - right side
+    sig_x = PAGE_WIDTH / 2 + 20
+    c.setLineWidth(0.25)
+    c.line(sig_x, y, PAGE_WIDTH - MARGIN_RIGHT, y)
     y -= LINE_HEIGHT
-    c.drawString(MARGIN_LEFT, y, "Server's Signature")
+    c.drawString(sig_x, y, "Server's Signature")
     y -= LINE_HEIGHT * 2
     
     # OR - Acknowledgment
@@ -289,10 +293,12 @@ def generate_ud4(data, output_path):
     c.drawString(MARGIN_LEFT, y, "Service of the within document is hereby acknowledged.")
     y -= LINE_HEIGHT * 4
     
-    # Defendant signature
-    c.line(MARGIN_LEFT, y, MARGIN_LEFT + 250, y)
+    # Defendant signature - right side
+    sig_x = PAGE_WIDTH / 2 + 20
+    c.setLineWidth(0.25)
+    c.line(sig_x, y, PAGE_WIDTH - MARGIN_RIGHT, y)
     y -= LINE_HEIGHT
-    c.drawString(MARGIN_LEFT, y, "Defendant's Signature")
+    c.drawString(sig_x, y, "Defendant's Signature")
     
     # Footer
     c.setFont("Times-Roman", 10)

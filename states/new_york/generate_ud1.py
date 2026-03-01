@@ -356,8 +356,8 @@ def generate_ud1(data, output_path):
     c.setFont("Times-Roman", 12)
     c.drawString(MARGIN_LEFT, y, f"Dated: {date_filed}")
     
-    sig_x = BOX2_LEFT_X + 8
-    c.setLineWidth(0.5)
+    sig_x = PAGE_WIDTH / 2 + 20
+    c.setLineWidth(0.25)
     c.line(sig_x, y - 3, PAGE_WIDTH - MARGIN_RIGHT, y - 3)
     
     # Name below signature line (title case, not all caps)

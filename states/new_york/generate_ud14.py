@@ -206,6 +206,7 @@ def generate_ud14(data, output_path):
     q2_x = mid_x + 20
     
     # Signature line first
+    c.setLineWidth(0.25)
     c.line(q2_x, quadrant_y, PAGE_WIDTH - MARGIN_RIGHT, quadrant_y)
     quadrant_y -= LINE_HEIGHT
     

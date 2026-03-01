@@ -206,6 +206,7 @@ def generate_ud12(data, output_path):
     sig_x = MARGIN_LEFT + 250
     
     # Signature line
+    c.setLineWidth(0.25)
     c.line(sig_x, y, PAGE_WIDTH - MARGIN_RIGHT, y)
     y -= LINE_HEIGHT
     c.drawString(sig_x, y, "SIGNATURE")
@@ -213,6 +214,7 @@ def generate_ud12(data, output_path):
     y -= DOUBLE_SPACE * 1.5
     
     # Print name line
+    c.setLineWidth(0.25)
     c.line(sig_x, y, PAGE_WIDTH - MARGIN_RIGHT, y)
     y -= LINE_HEIGHT
     c.drawString(sig_x, y, "Print or type name below signature")
