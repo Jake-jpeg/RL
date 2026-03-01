@@ -106,75 +106,58 @@ def generate_ud4(data, output_path):
     c.drawString(MARGIN_LEFT, y, "SUPREME COURT OF THE STATE OF NEW YORK")
     y -= LINE_HEIGHT
     c.drawString(MARGIN_LEFT, y, f"COUNTY OF {county_upper}")
+    y -= LINE_HEIGHT
+    
+    # Dashed line with X (top of caption)
+    c.setFont("Times-Roman", 10)
+    c.drawString(MARGIN_LEFT, y, "-" * 62 + "X")
+    y -= LINE_HEIGHT
+    
+    # Plaintiff name
+    c.setFont("Times-Roman", 12)
+    c.drawString(MARGIN_LEFT, y, f"{plaintiff_name},")
+    
+    # Index No. (right side)
+    index_number = data.get('indexNumber', '').strip()
+    index_display = index_number if index_number else "_______________"
+    c.drawString(PAGE_WIDTH/2 + 95, y, f"Index No.: {index_display}")
+    y -= LINE_HEIGHT
+    
+    c.setFont("Times-Italic", 12)
+    c.drawString(MARGIN_LEFT + 100, y, "Plaintiff,")
     y -= LINE_HEIGHT * 1.5
     
-    # Caption box
-    boxes_top_y = y
-    box_height = LINE_HEIGHT * 8
-    boxes_bottom_y = boxes_top_y - box_height
-    
-    # Draw box borders
-    c.setStrokeColorRGB(0, 0, 0)
-    c.setLineWidth(0.5)
-    
-    # Left box (caption) - top, right, bottom borders
-    c.line(BOX1_LEFT_X, boxes_top_y, BOX1_RIGHT_X, boxes_top_y)
-    c.line(BOX1_RIGHT_X, boxes_top_y, BOX1_RIGHT_X, boxes_bottom_y)
-    c.line(BOX1_LEFT_X, boxes_bottom_y, BOX1_RIGHT_X, boxes_bottom_y)
-    
-    # Right box - left border only (creates divider)
-    c.line(BOX2_LEFT_X, boxes_top_y, BOX2_LEFT_X, boxes_bottom_y)
-    
-    # Left box content - Caption
-    box1_x = BOX1_LEFT_X + 8
-    caption_y = boxes_top_y - LINE_HEIGHT * 1.5
-    
     c.setFont("Times-Roman", 12)
-    c.drawString(box1_x, caption_y, f"{plaintiff_name},")
-    caption_y -= LINE_HEIGHT
-    c.setFont("Times-Italic", 12)
-    c.drawString(box1_x + 40, caption_y, "Plaintiff,")
-    caption_y -= LINE_HEIGHT * 1.5
-    c.setFont("Times-Roman", 12)
-    c.drawString(box1_x + 40, caption_y, "-against-")
-    caption_y -= LINE_HEIGHT * 1.5
-    c.drawString(box1_x, caption_y, f"{defendant_name}.")
-    caption_y -= LINE_HEIGHT
-    c.setFont("Times-Italic", 12)
-    c.drawString(box1_x + 40, caption_y, "Defendant.")
+    c.drawString(MARGIN_LEFT + 80, y, "- against -")
     
-    # Right box content - Title
-    box2_x = BOX2_LEFT_X + 8
-    title_y = boxes_top_y - LINE_HEIGHT * 1.5
-    
-    # Index Number - required at this phase
-    index_number = data.get('indexNumber', '').strip()
-    c.setFont("Times-Roman", 12)
-    if index_number:
-        c.drawString(box2_x, title_y, f"Index No.: {index_number}")
-    else:
-        c.drawString(box2_x, title_y, "Index No.: _______________")
-    title_y -= LINE_HEIGHT * 2
-    
+    # Document title (right side, centered)
     c.setFont("Times-Bold", 12)
-    # Center the title in the right box
+    right_center = PAGE_WIDTH/2 + 95 + (PAGE_WIDTH - MARGIN_RIGHT - (PAGE_WIDTH/2 + 95)) / 2
     title_text = "SWORN STATEMENT OF"
-    title_width = c.stringWidth(title_text, "Times-Bold", 12)
-    box2_center = BOX2_LEFT_X + (BOX2_RIGHT_X - BOX2_LEFT_X) / 2
-    c.drawString(box2_center - title_width/2, title_y, title_text)
-    title_y -= LINE_HEIGHT
+    c.drawString(right_center - c.stringWidth(title_text, "Times-Bold", 12)/2, y, title_text)
+    y -= LINE_HEIGHT * 1.2
     
     title_text2 = "REMOVAL OF BARRIERS"
-    title_width2 = c.stringWidth(title_text2, "Times-Bold", 12)
-    c.drawString(box2_center - title_width2/2, title_y, title_text2)
-    title_y -= LINE_HEIGHT
+    c.drawString(right_center - c.stringWidth(title_text2, "Times-Bold", 12)/2, y, title_text2)
+    y -= LINE_HEIGHT
     
     title_text3 = "TO REMARRIAGE"
-    title_width3 = c.stringWidth(title_text3, "Times-Bold", 12)
-    c.drawString(box2_center - title_width3/2, title_y, title_text3)
+    c.drawString(right_center - c.stringWidth(title_text3, "Times-Bold", 12)/2, y, title_text3)
+    y -= LINE_HEIGHT * 0.3
     
-    # Body content
-    y = boxes_bottom_y - LINE_HEIGHT * 2
+    # Defendant name
+    c.setFont("Times-Roman", 12)
+    c.drawString(MARGIN_LEFT, y, f"{defendant_name},")
+    y -= LINE_HEIGHT
+    
+    c.setFont("Times-Italic", 12)
+    c.drawString(MARGIN_LEFT + 100, y, "Defendant.")
+    y -= LINE_HEIGHT
+    
+    # Dashed line with X (bottom of caption)
+    c.setFont("Times-Roman", 10)
+    c.drawString(MARGIN_LEFT, y, "-" * 62 + "X")
+    y -= LINE_HEIGHT * 1.5
     
     # State/County line
     c.setFont("Times-Roman", 12)
@@ -214,7 +197,7 @@ def generate_ud4(data, output_path):
     
     # Footer
     c.setFont("Times-Roman", 10)
-    c.drawString(MARGIN_LEFT, MARGIN_BOTTOM - 20, "Form UD-4 (Rev. 02/2026)")
+    c.drawString(MARGIN_LEFT, MARGIN_BOTTOM - 20, "(Form UD-4)")
     
     # =========================================================================
     # PAGE 2: UD-4a Affirmation of Service
@@ -313,7 +296,7 @@ def generate_ud4(data, output_path):
     
     # Footer
     c.setFont("Times-Roman", 10)
-    c.drawString(MARGIN_LEFT, MARGIN_BOTTOM - 20, "Form UD-4a (Rev. 02/2026)")
+    c.drawString(MARGIN_LEFT, MARGIN_BOTTOM - 20, "(Form UD-4a)")
     
     c.save()
     return output_path

@@ -276,7 +276,7 @@ def generate_ud9(data, output_path):
     
     # Footer - Form ID in bottom margin
     c.setFont("Times-Roman", 10)
-    c.drawString(MARGIN_LEFT, 36, "Form UD-9 (Rev. 02/2026)")
+    c.drawString(MARGIN_LEFT, 36, "(Form UD-9)")
     
     c.save()
     return output_path

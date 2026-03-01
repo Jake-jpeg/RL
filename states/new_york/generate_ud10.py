@@ -266,7 +266,28 @@ def generate_ud10(data, output_path):
     right_y -= LINE_HEIGHT
     c.drawString(right_x, right_y, "CONCLUSIONS OF LAW")
     
-    y = box_bottom - LINE_HEIGHT * 1.5
+    y -= LINE_HEIGHT
+    
+    c.setFont("Times-Italic", 12)
+    c.drawString(MARGIN_LEFT + 100, y, "Plaintiff,")
+    y -= LINE_HEIGHT * 1.5
+    
+    c.setFont("Times-Roman", 12)
+    c.drawString(MARGIN_LEFT + 80, y, "- against -")
+    y -= LINE_HEIGHT * 1.5
+    
+    c.setFont("Times-Roman", 12)
+    c.drawString(MARGIN_LEFT, y, f"{defendant_name},")
+    y -= LINE_HEIGHT
+    
+    c.setFont("Times-Italic", 12)
+    c.drawString(MARGIN_LEFT + 100, y, "Defendant.")
+    y -= LINE_HEIGHT
+    
+    # Dashed line with X (bottom of caption)
+    c.setFont("Times-Roman", 10)
+    c.drawString(MARGIN_LEFT, y, "-" * 62 + "X")
+    y -= LINE_HEIGHT * 1.5
     
     # Intro paragraph - flows naturally as two paragraphs
     c.setFont("Times-Roman", 12)
@@ -472,7 +493,7 @@ def generate_ud10(data, output_path):
     
     # Form identifier and revision date at bottom
     c.setFont("Times-Roman", 10)
-    c.drawString(MARGIN_LEFT, MARGIN_BOTTOM - 10, "Form UD-10 (Rev. 02/2026)")
+    c.drawString(MARGIN_LEFT, MARGIN_BOTTOM - 10, "(Form UD-10)")
     
     c.save()
     return output_path

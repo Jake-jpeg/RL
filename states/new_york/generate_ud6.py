@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-DivorceGPT UD-6 (Affidavit of Plaintiff) PDF Generator
+DivorceGPT UD-6 (Affirmation of Plaintiff) PDF Generator
 =======================================================
 
 Main substantive affidavit for uncontested divorce.
@@ -65,7 +65,7 @@ def draw_wrapped_text(c, text, x, y, max_width, font_name="Times-Roman", font_si
 
 
 def generate_ud6(data, output_path):
-    """Generate UD-6 (Affidavit of Plaintiff) PDF."""
+    """Generate UD-6 (Affirmation of Plaintiff) PDF."""
     
     c = canvas.Canvas(output_path, pagesize=letter)
     
@@ -107,59 +107,49 @@ def generate_ud6(data, output_path):
     c.drawString(MARGIN_LEFT, y, "SUPREME COURT OF THE STATE OF NEW YORK")
     y -= LINE_HEIGHT
     c.drawString(MARGIN_LEFT, y, f"COUNTY OF {county_upper}")
-    y -= LINE_HEIGHT  # Reduced from 1.5 to 1
+    y -= LINE_HEIGHT
     
-    # Caption box
-    boxes_top_y = y
-    box_height = LINE_HEIGHT * 8
-    boxes_bottom_y = boxes_top_y - box_height
+    # Dashed line with X (top of caption)
+    c.setFont("Times-Roman", 10)
+    c.drawString(MARGIN_LEFT, y, "-" * 62 + "X")
+    y -= LINE_HEIGHT
     
-    # Draw box borders
-    c.setStrokeColorRGB(0, 0, 0)
-    c.setLineWidth(0.5)
-    
-    c.line(BOX1_LEFT_X, boxes_top_y, BOX1_RIGHT_X, boxes_top_y)
-    c.line(BOX1_RIGHT_X, boxes_top_y, BOX1_RIGHT_X, boxes_bottom_y)
-    c.line(BOX1_LEFT_X, boxes_bottom_y, BOX1_RIGHT_X, boxes_bottom_y)
-    c.line(BOX2_LEFT_X, boxes_top_y, BOX2_LEFT_X, boxes_bottom_y)
-    
-    # Left box - Caption
-    box1_x = BOX1_LEFT_X + 8
-    caption_y = boxes_top_y - LINE_HEIGHT * 1.5
-    
+    # Plaintiff name
     c.setFont("Times-Roman", 12)
-    c.drawString(box1_x, caption_y, f"{plaintiff_name},")
-    caption_y -= LINE_HEIGHT
+    c.drawString(MARGIN_LEFT, y, f"{plaintiff_name},")
+    
+    # Index No. (right side)
+    index_display = index_number if index_number else "_______________"
+    c.drawString(PAGE_WIDTH/2 + 95, y, f"Index No.: {index_display}")
+    y -= LINE_HEIGHT
+    
     c.setFont("Times-Italic", 12)
-    c.drawString(box1_x + 40, caption_y, "Plaintiff,")
-    caption_y -= LINE_HEIGHT * 1.5
-    c.setFont("Times-Roman", 12)
-    c.drawString(box1_x + 40, caption_y, "-against-")
-    caption_y -= LINE_HEIGHT * 1.5
-    c.drawString(box1_x, caption_y, f"{defendant_name}.")
-    caption_y -= LINE_HEIGHT
-    c.setFont("Times-Italic", 12)
-    c.drawString(box1_x + 40, caption_y, "Defendant.")
-    
-    # Right box - Title
-    box2_x = BOX2_LEFT_X + 8
-    title_y = boxes_top_y - LINE_HEIGHT * 1.5
+    c.drawString(MARGIN_LEFT + 100, y, "Plaintiff,")
+    y -= LINE_HEIGHT * 1.5
     
     c.setFont("Times-Roman", 12)
-    if index_number:
-        c.drawString(box2_x, title_y, f"Index No.: {index_number}")
-    else:
-        c.drawString(box2_x, title_y, "Index No.: _______________")
-    title_y -= LINE_HEIGHT * 2.5
+    c.drawString(MARGIN_LEFT + 80, y, "- against -")
     
+    # Document title (right side, centered)
     c.setFont("Times-Bold", 12)
-    box2_center = BOX2_LEFT_X + (BOX2_RIGHT_X - BOX2_LEFT_X) / 2
-    title_text = "AFFIDAVIT OF PLAINTIFF"
-    title_width = c.stringWidth(title_text, "Times-Bold", 12)
-    c.drawString(box2_center - title_width/2, title_y, title_text)
+    right_center = PAGE_WIDTH/2 + 95 + (PAGE_WIDTH - MARGIN_RIGHT - (PAGE_WIDTH/2 + 95)) / 2
+    title_text = "AFFIRMATION OF PLAINTIFF"
+    c.drawString(right_center - c.stringWidth(title_text, "Times-Bold", 12)/2, y, title_text)
+    y -= LINE_HEIGHT * 1.5
     
-    # Body content
-    y = boxes_bottom_y - LINE_HEIGHT * 1.5
+    # Defendant name
+    c.setFont("Times-Roman", 12)
+    c.drawString(MARGIN_LEFT, y, f"{defendant_name},")
+    y -= LINE_HEIGHT
+    
+    c.setFont("Times-Italic", 12)
+    c.drawString(MARGIN_LEFT + 100, y, "Defendant.")
+    y -= LINE_HEIGHT
+    
+    # Dashed line with X (bottom of caption)
+    c.setFont("Times-Roman", 10)
+    c.drawString(MARGIN_LEFT, y, "-" * 62 + "X")
+    y -= LINE_HEIGHT * 1.5
     
     # State/County line
     c.setFont("Times-Roman", 12)
@@ -338,7 +328,7 @@ def generate_ud6(data, output_path):
     
     # Footer - Form ID in bottom margin (below content area)
     c.setFont("Times-Roman", 10)
-    c.drawString(MARGIN_LEFT, 36, "Form UD-6 (Rev. 02/2026)")
+    c.drawString(MARGIN_LEFT, 36, "(Form UD-6)")
     
     c.save()
     return output_path
