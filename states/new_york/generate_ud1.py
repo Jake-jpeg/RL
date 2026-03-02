@@ -166,7 +166,7 @@ def generate_ud1(data, output_path):
     
     date_filed = data.get('dateFiled', '').strip()
     if not date_filed:
-        date_filed = datetime.now().strftime('%B %d, %Y')
+        date_filed = '___________________'
     
     qual_addr_lines = format_address_lines(qualifying_address)
     plaintiff_addr_lines = format_address_lines(plaintiff_address)
