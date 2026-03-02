@@ -119,60 +119,19 @@ def generate_ud15(data, output_path):
     c.drawString(MARGIN_LEFT, y, f"COUNTY OF {county_upper}")
     y -= LINE_HEIGHT * 1.5
     
-    # Two-box caption (matching UD-6 format - single border with vertical divider)
-    boxes_top_y = y
-    box_height = LINE_HEIGHT * 8
-    boxes_bottom_y = boxes_top_y - box_height
-    
-    # Draw box borders
-    c.setStrokeColorRGB(0, 0, 0)
-    c.setLineWidth(0.5)
-    
-    # Left box - top, right, bottom (no left border)
-    c.line(BOX1_LEFT_X, boxes_top_y, BOX1_RIGHT_X, boxes_top_y)
-    c.line(BOX1_RIGHT_X, boxes_top_y, BOX1_RIGHT_X, boxes_bottom_y)
-    c.line(BOX1_LEFT_X, boxes_bottom_y, BOX1_RIGHT_X, boxes_bottom_y)
-    
-    # Right box - left border only (vertical divider)
-    c.line(BOX2_LEFT_X, boxes_top_y, BOX2_LEFT_X, boxes_bottom_y)
-    
-    # Left box - Caption
-    box1_x = BOX1_LEFT_X + 8
-    caption_y = boxes_top_y - LINE_HEIGHT * 1.5
+    # Caption - dashed line format
+    c.setFont("Times-Roman", 10)
+    c.drawString(MARGIN_LEFT, y, "-" * 62 + "X")
+    y -= LINE_HEIGHT
     
     c.setFont("Times-Roman", 12)
-    c.drawString(box1_x, caption_y, f"{plaintiff_name},")
-    caption_y -= LINE_HEIGHT
-    c.setFont("Times-Italic", 12)
-    c.drawString(box1_x + 40, caption_y, "Plaintiff,")
-    caption_y -= LINE_HEIGHT * 1.5
-    c.setFont("Times-Roman", 12)
-    c.drawString(box1_x + 40, caption_y, "-against-")
-    caption_y -= LINE_HEIGHT * 1.5
-    c.drawString(box1_x, caption_y, f"{defendant_name},")
-    caption_y -= LINE_HEIGHT
-    c.setFont("Times-Italic", 12)
-    c.drawString(box1_x + 40, caption_y, "Defendant.")
+    c.drawString(MARGIN_LEFT, y, f"{plaintiff_name},")
     
-    # Right box - Index No. and Title
-    box2_x = BOX2_LEFT_X + 8
-    title_y = boxes_top_y - LINE_HEIGHT * 1.5
+    # Right side - Index No. and Title
+    right_x = PAGE_WIDTH/2 + 95
     
-    c.setFont("Times-Roman", 12)
-    if index_number:
-        c.drawString(box2_x, title_y, f"Index No.: {index_number}")
-    else:
-        c.drawString(box2_x, title_y, "Index No.: _______________")
-    title_y -= LINE_HEIGHT * 2
-    
-    # Document title - bold, multi-line
-    c.setFont("Times-Bold", 12)
-    c.drawString(box2_x, title_y, "AFFIDAVIT OF SERVICE BY")
-    title_y -= LINE_HEIGHT
-    c.drawString(box2_x, title_y, "MAIL OF JUDGMENT OF DIVORCE")
-    title_y -= LINE_HEIGHT
-    c.drawString(box2_x, title_y, "WITH NOTICE OF ENTRY")
-    
+    index_display = index_number if index_number else "_______________"
+    c.drawString(right_x, y, f"Index No.: {index_display}")
     y -= LINE_HEIGHT
     
     c.setFont("Times-Italic", 12)
@@ -181,7 +140,15 @@ def generate_ud15(data, output_path):
     
     c.setFont("Times-Roman", 12)
     c.drawString(MARGIN_LEFT + 80, y, "- against -")
-    y -= LINE_HEIGHT * 1.5
+    
+    # Document title - bold, multi-line on right
+    c.setFont("Times-Bold", 12)
+    c.drawString(right_x, y, "AFFIRMATION OF SERVICE BY")
+    y -= LINE_HEIGHT
+    c.drawString(right_x, y, "MAIL OF JUDGMENT OF DIVORCE")
+    y -= LINE_HEIGHT
+    c.drawString(right_x, y, "WITH NOTICE OF ENTRY")
+    y -= LINE_HEIGHT * 0.3
     
     c.setFont("Times-Roman", 12)
     c.drawString(MARGIN_LEFT, y, f"{defendant_name},")
