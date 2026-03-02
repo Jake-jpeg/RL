@@ -177,7 +177,7 @@ def generate_ud4(data, output_path):
     y -= LINE_HEIGHT * 2
     
     # Paragraph 3 - waiver statement
-    para3_text = "3.  The Defendant has waived in writing the requirements of DRL §253 (Barriers to Remarriage). A copy of said waiver is attached."
+    para3_text = "3.  The Defendant has waived in writing the requirements of DRL §253."
     y = draw_wrapped_text(c, para3_text, MARGIN_LEFT, y, CONTENT_WIDTH, "Times-Italic", 12)
     y -= LINE_HEIGHT * 2
     
