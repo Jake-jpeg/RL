@@ -272,7 +272,7 @@ def generate_ud11(data, output_path):
     y = draw_wrapped_text(c, intro4, MARGIN_LEFT, y, CONTENT_WIDTH)
     
     # Addresses (filled in) and SSN (blank for user to fill by hand)
-    addr_text = f"The Plaintiff's address is {plaintiff_address}, and social security number is ___________. The Defendant's address is {defendant_address}, and social security number is ___________."
+    addr_text = f"The Plaintiff's address is {plaintiff_address}, and social security number is _________________________. The Defendant's address is {defendant_address}, and social security number is _________________________."
     y = draw_wrapped_text(c, addr_text, MARGIN_LEFT, y, CONTENT_WIDTH)
     
     y -= DOUBLE_SPACE * 0.5

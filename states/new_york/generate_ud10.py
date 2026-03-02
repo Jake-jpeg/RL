@@ -158,8 +158,8 @@ def generate_ud10(data, output_path):
     # Residency type
     residency_type = data.get('residencyType', 'A')
     
-    # Filing date
-    filing_date = data.get('filingDate', '').strip()
+    # Filing date (may come as 'filingDate' or 'summonsDate' from the form data)
+    filing_date = data.get('filingDate', '').strip() or data.get('summonsDate', '').strip()
     
     # =========================================================================
     # PAGE 1
