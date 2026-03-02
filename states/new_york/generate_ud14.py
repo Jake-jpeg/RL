@@ -39,7 +39,7 @@ def generate_ud14(data, output_path):
     - plaintiffAddress: Plaintiff's full address
     - defendantAddress: Defendant's full address
     
-    Entry date left blank - user fills after judgment is entered.
+    Entry date populated from judgmentEntryDate field collected in Phase 3.
     """
     
     c = canvas.Canvas(output_path, pagesize=letter)
@@ -62,6 +62,8 @@ def generate_ud14(data, output_path):
     
     plaintiff_address = data.get('plaintiffAddress', '').strip()
     defendant_address = data.get('defendantAddress', '').strip()
+    defendant_current_address = data.get('defendantCurrentAddress', '').strip() or defendant_address
+    judgment_entry_date = data.get('judgmentEntryDate', '').strip()
     
     # =========================================================================
     # PAGE 1 (only page)
@@ -120,10 +122,15 @@ def generate_ud14(data, output_path):
     c.setFont("Times-Roman", 12)
     
     # PLEASE TAKE NOTICE paragraph
+    if judgment_entry_date:
+        date_display = judgment_entry_date
+    else:
+        date_display = "_____ day of _______________, 20___"
+    
     notice_text = (
         f"PLEASE TAKE NOTICE that the attached is a true copy of a judgment of divorce in "
-        f"this matter that was entered in the Office of the County Clerk of {county_name} County, on the "
-        f"_____ day of _______________, 20___."
+        f"this matter that was entered in the Office of the County Clerk of {county_name} County, on "
+        f"{date_display}."
     )
     
     # Word wrap
@@ -264,6 +271,7 @@ if __name__ == "__main__":
         "indexNumber": "2027/54321",
         "plaintiffAddress": "123 Main Street, Monroe, NY 10950",
         "defendantAddress": "456 Oak Avenue, Goshen, NY 10924",
+        "judgmentEntryDate": "February 28, 2027",
     }
     
     print("\n[TEST 1] Full DivorceGPT Data")
