@@ -151,7 +151,7 @@ def generate_ud7(data, output_path):
     # Opening - Defendant's name and address
     defendant_address_display = defendant_address if defendant_address else "_____________________________________________"
     
-    para_open = f"{defendant_name}, being duly sworn, says:"
+    para_open = f"{defendant_name}, affirms the following under the penalties of perjury:"
     y = draw_wrapped_text(c, para_open, MARGIN_LEFT, y, CONTENT_WIDTH)
     y -= LINE_HEIGHT
     

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-DivorceGPT UD-15 (Affidavit of Service by Mail of Judgment of Divorce) PDF Generator
+DivorceGPT UD-15 (Affirmation of Service by Mail of Judgment of Divorce) PDF Generator
 =====================================================================================
 
 Proof that the Judgment of Divorce with Notice of Entry was served on the Defendant by mail.
@@ -69,7 +69,7 @@ def draw_wrapped_text(c, text, x, y, max_width, line_height=None):
 
 def generate_ud15(data, output_path):
     """
-    Generate UD-15 (Affidavit of Service by Mail of JOD) PDF.
+    Generate UD-15 (Affirmation of Service by Mail of JOD) PDF.
     
     Required DivorceGPT variables:
     - plaintiffName: Plaintiff's full legal name
@@ -128,7 +128,7 @@ def generate_ud15(data, output_path):
     c.drawString(MARGIN_LEFT, y, f"{plaintiff_name},")
     
     # Right side - Index No. and Title
-    right_x = PAGE_WIDTH/2 + 95
+    right_x = PAGE_WIDTH / 2
     
     index_display = index_number if index_number else "_______________"
     c.drawString(right_x, y, f"Index No.: {index_display}")
@@ -180,7 +180,7 @@ def generate_ud15(data, output_path):
     # Server identification paragraph - single spaced
     c.drawString(MARGIN_LEFT, y, "________________________________, residing at _________________________________,")
     y -= LINE_HEIGHT
-    c.drawString(MARGIN_LEFT, y, "being sworn, says, I am not a party to the action, and am over 18 years of age.")
+    c.drawString(MARGIN_LEFT, y, "says, I am not a party to the action, and am over 18 years of age.")
     y -= LINE_HEIGHT * 1.5
     
     # Service paragraph - single spaced
@@ -213,19 +213,35 @@ def generate_ud15(data, output_path):
     
     y -= LINE_HEIGHT * 1.5
     
-    # Dated and signature - single line
+    # Signature block - centered right half, matching reference image
+    sig_block_left = PAGE_WIDTH / 2 - 40  # start of signature area
+    sig_line_right = PAGE_WIDTH - MARGIN_RIGHT
+    
+    # "Server's" label aligned directly above "Signature:"
+    c.drawString(sig_block_left, y, "Server's")
+    y -= LINE_HEIGHT
+    
+    # Dated on left, "Signature:" label + line on right - same baseline
     c.drawString(MARGIN_LEFT, y, "Dated: _______________")
     
-    sig_x = MARGIN_LEFT + 250
-    c.drawString(sig_x, y, "Server's Signature: ____________________")
-    y -= LINE_HEIGHT * 2  # extra space for handwriting
-    c.drawString(sig_x, y, "Print Name: ____________________")
+    sig_label = "Signature: "
+    sig_label_w = c.stringWidth(sig_label, "Times-Roman", 12)
+    c.drawString(sig_block_left, y, sig_label)
+    c.setLineWidth(0.25)
+    c.line(sig_block_left + sig_label_w, y - 2, sig_line_right, y - 2)
+    y -= LINE_HEIGHT * 1.5
+    
+    # "Print Name:" label + line, aligned to same block
+    pn_label = "Print Name: "
+    pn_label_w = c.stringWidth(pn_label, "Times-Roman", 12)
+    c.drawString(sig_block_left, y, pn_label)
+    c.line(sig_block_left + pn_label_w, y - 2, sig_line_right, y - 2)
     
     y -= LINE_HEIGHT * 2
     
-    # Affirmation paragraph - single spaced (starts with comma for "I,")
+    # Affirmation paragraph - starts with "I,"
     affirm_text = (
-        ", ________________________, affirm this ___ day of ______, ____, under the penalties of perjury, "
+        "I, ________________________, affirm this ___ day of ______, ____, under the penalties of perjury, "
         "under the laws of New York, which may include a fine or imprisonment, that the foregoing is true, "
         "except as to matters alleged on information and belief and as to those matters I believe it to be true, "
         "and I understand that this document may be filed in an action or proceeding in a court of law."
@@ -234,12 +250,13 @@ def generate_ud15(data, output_path):
     
     y -= LINE_HEIGHT * 2
     
-    # Final signature line
-    sig_x = MARGIN_LEFT + 250
+    # Final signature line - centered in same block
     c.setLineWidth(0.25)
-    c.line(sig_x, y, PAGE_WIDTH - MARGIN_RIGHT, y)
+    c.line(sig_block_left, y, sig_line_right, y)
     y -= LINE_HEIGHT
-    c.drawString(sig_x, y, "Server's Signature")
+    server_sig_text = "Server's Signature"
+    server_sig_w = c.stringWidth(server_sig_text, "Times-Roman", 12)
+    c.drawString((sig_block_left + sig_line_right) / 2 - server_sig_w / 2, y, server_sig_text)
     
     # Form identifier at bottom
     c.drawString(MARGIN_LEFT, MARGIN_BOTTOM - 10, "(Form UD-15)")

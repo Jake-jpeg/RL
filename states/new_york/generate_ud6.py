@@ -157,7 +157,7 @@ def generate_ud6(data, output_path):
     y -= LINE_HEIGHT * 1.5
     
     # Opening
-    c.drawString(MARGIN_LEFT, y, f"{plaintiff_name}, being duly sworn, deposes and says:")
+    c.drawString(MARGIN_LEFT, y, f"{plaintiff_name}, affirms the following under the penalties of perjury:")
     y -= LINE_HEIGHT * 1.5
     
     # 1. Identity and addresses
