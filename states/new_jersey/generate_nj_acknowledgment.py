@@ -255,9 +255,92 @@ def generate_nj_acknowledgment(data, output_path):
     y -= LINE_HEIGHT
 
     c.setFont(FONT_ITALIC, FONT_SIZE)
-    c.drawString(sig_x, y, "Defendant, Pro-Se")
+    c.drawString(sig_x, y, "Defendant")
 
-    draw_page_number(c, 1, 1)
+    draw_page_number(c, 1, 2)
+
+    # =====================================================================
+    # PAGE 2 — VERIFICATION (Notary Jurat)
+    # =====================================================================
+    c.showPage()
+    y = PAGE_HEIGHT - MARGIN_TOP
+
+    # Title — centered, bold, underlined
+    c.setFont(FONT_BOLD, FONT_SIZE)
+    title = "NOTARIZATION"
+    title_w = c.stringWidth(title, FONT_BOLD, FONT_SIZE)
+    title_x = (PAGE_WIDTH - title_w) / 2
+    c.drawString(title_x, y, title)
+    # Underline
+    c.setLineWidth(0.5)
+    c.line(title_x, y - 1.5, title_x + title_w, y - 1.5)
+    y -= DOUBLE_SPACE * 2
+
+    # State / SS / County block with brackets
+    bracket_x = MARGIN_LEFT + 250
+    c.setFont(FONT, FONT_SIZE)
+    c.drawString(MARGIN_LEFT, y, "STATE OF ________________________")
+    c.drawString(bracket_x, y, ")")
+    y -= LINE_HEIGHT
+    c.drawString(bracket_x, y, ") SS.")
+    y -= LINE_HEIGHT
+    c.drawString(MARGIN_LEFT, y, "COUNTY OF ________________________")
+    c.drawString(bracket_x, y, ")")
+    y -= DOUBLE_SPACE * 1.5
+
+    # BE IT REMEMBERED paragraph
+    y = draw_wrapped_justified(c,
+        f"BE IT REMEMBERED that on this ________ day of ________________________, "
+        f"20____, before me, the subscriber, a Notary Public, personally appeared "
+        f"{d_name_upper}, who, I am satisfied, is the person named in the foregoing "
+        f"Acknowledgment of Service, to whom I first made known the contents thereof, "
+        f"and thereupon the party acknowledged that the party signed, sealed, and "
+        f"delivered the same as the party's voluntary act and deed, for the uses and "
+        f"purposes therein expressed.",
+        MARGIN_LEFT, y, CONTENT_WIDTH, line_height=DOUBLE_SPACE)
+
+    y -= DOUBLE_SPACE * 3
+
+    # All notary elements — right side
+    sig_x = PAGE_WIDTH / 2 + 20
+
+    # "Subscribed and sworn to before me"
+    c.setFont(FONT, FONT_SIZE)
+    c.drawString(sig_x, y, "Subscribed and sworn to before me")
+    y -= LINE_HEIGHT
+    c.drawString(sig_x, y, "on:")
+
+    y -= DOUBLE_SPACE * 2
+
+    # Notary signature line
+    c.setLineWidth(0.5)
+    c.line(sig_x, y, PAGE_WIDTH - MARGIN_RIGHT, y)
+    y -= LINE_HEIGHT
+
+    c.setFont(FONT, FONT_SIZE)
+    c.drawString(sig_x, y, "Notary Public")
+    y -= DOUBLE_SPACE
+
+    # Commission expires with line
+    c.drawString(sig_x, y, "My Commission Expires:")
+    y -= LINE_HEIGHT * 0.5
+    c.setLineWidth(0.5)
+    c.line(sig_x + c.stringWidth("My Commission Expires: ", FONT, FONT_SIZE), y + LINE_HEIGHT * 0.5, PAGE_WIDTH - MARGIN_RIGHT, y + LINE_HEIGHT * 0.5)
+
+    y -= DOUBLE_SPACE * 2.5
+
+    # Notary stamp area — right side
+    c.setFont(FONT_ITALIC, 10)
+    c.drawString(sig_x, y, "(Notary Stamp / Seal)")
+    y -= LINE_HEIGHT * 4
+
+    # Box for stamp — right side
+    c.setLineWidth(0.3)
+    c.setDash(3, 3)
+    c.rect(sig_x, y, PAGE_WIDTH - MARGIN_RIGHT - sig_x, 80)
+    c.setDash()
+
+    draw_page_number(c, 2, 2)
     c.save()
     return output_path
 
