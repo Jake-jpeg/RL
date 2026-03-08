@@ -33,6 +33,105 @@ CORS(app, origins=[
     "https://www.divorcegpt.com",
 ], supports_credentials=True)
 
+import re
+
+# =====================================================================
+# ADDRESS PARSING UTILITY
+# =====================================================================
+# DivorceGPT AI collects a single combined address like:
+#   "2030 Hudson Street, Fort Lee, NJ 07024"
+# ReportLab generators expect split fields:
+#   plaintiffAddress = "2030 Hudson Street"
+#   plaintiffCityStateZip = "Fort Lee, NJ 07024"
+#   plaintiffFullCityState = "Fort Lee, New Jersey"
+# This utility parses the combined address into the split format.
+
+STATE_ABBREVS = {
+    'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas', 'CA': 'California',
+    'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware', 'FL': 'Florida', 'GA': 'Georgia',
+    'HI': 'Hawaii', 'ID': 'Idaho', 'IL': 'Illinois', 'IN': 'Indiana', 'IA': 'Iowa',
+    'KS': 'Kansas', 'KY': 'Kentucky', 'LA': 'Louisiana', 'ME': 'Maine', 'MD': 'Maryland',
+    'MA': 'Massachusetts', 'MI': 'Michigan', 'MN': 'Minnesota', 'MS': 'Mississippi', 'MO': 'Missouri',
+    'MT': 'Montana', 'NE': 'Nebraska', 'NV': 'Nevada', 'NH': 'New Hampshire', 'NJ': 'New Jersey',
+    'NM': 'New Mexico', 'NY': 'New York', 'NC': 'North Carolina', 'ND': 'North Dakota', 'OH': 'Ohio',
+    'OK': 'Oklahoma', 'OR': 'Oregon', 'PA': 'Pennsylvania', 'RI': 'Rhode Island', 'SC': 'South Carolina',
+    'SD': 'South Dakota', 'TN': 'Tennessee', 'TX': 'Texas', 'UT': 'Utah', 'VT': 'Vermont',
+    'VA': 'Virginia', 'WA': 'Washington', 'WV': 'West Virginia', 'WI': 'Wisconsin', 'WY': 'Wyoming',
+    'DC': 'District of Columbia',
+}
+
+def parse_address(full_address):
+    """
+    Parse a combined address into street, city/state/zip, and full city/state.
+    Input:  "2030 Hudson Street, Fort Lee, NJ 07024"
+    Output: ("2030 Hudson Street", "Fort Lee, NJ 07024", "Fort Lee, New Jersey")
+    """
+    if not full_address:
+        return ('', '', '')
+    
+    # Try to match: street, city, STATE ZIP
+    match = re.match(
+        r'^(.+?),\s*(.+?),\s*([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$',
+        full_address.strip()
+    )
+    if match:
+        street = match.group(1).strip()
+        city = match.group(2).strip()
+        state_abbr = match.group(3).strip()
+        zipcode = match.group(4).strip()
+        state_full = STATE_ABBREVS.get(state_abbr, state_abbr)
+        city_state_zip = f"{city}, {state_abbr} {zipcode}"
+        full_city_state = f"{city}, {state_full}"
+        return (street, city_state_zip, full_city_state)
+    
+    # Fallback: try splitting by last comma
+    parts = full_address.rsplit(',', 1)
+    if len(parts) == 2:
+        street_and_city = parts[0].strip()
+        state_zip = parts[1].strip()
+        # Try to split street from city
+        street_parts = street_and_city.rsplit(',', 1)
+        if len(street_parts) == 2:
+            return (street_parts[0].strip(), f"{street_parts[1].strip()}, {state_zip}", street_parts[1].strip())
+    
+    # Last resort: return as-is for street, empty for others
+    return (full_address, '', '')
+
+
+def preprocess_nj_data(data):
+    """
+    Preprocess data from DivorceGPT AI into the format NJ ReportLab generators expect.
+    Parses combined addresses, derives ceremony location, etc.
+    """
+    processed = dict(data)  # copy
+    
+    # Parse plaintiff address
+    p_addr = data.get('plaintiffAddress', '')
+    if p_addr and not data.get('plaintiffCityStateZip'):
+        street, city_state_zip, full_city_state = parse_address(p_addr)
+        processed['plaintiffAddress'] = street
+        processed['plaintiffCityStateZip'] = city_state_zip
+        processed['plaintiffFullCityState'] = full_city_state
+    
+    # Parse defendant address
+    d_addr = data.get('defendantAddress', '')
+    if d_addr and not data.get('defendantCityStateZip'):
+        street, city_state_zip, full_city_state = parse_address(d_addr)
+        processed['defendantAddress'] = street
+        processed['defendantCityStateZip'] = city_state_zip
+        processed['defendantFullCityState'] = full_city_state
+    
+    # Derive ceremony location from marriageCity + marriageState
+    if not data.get('ceremonyLocation'):
+        city = data.get('marriageCity', '').strip()
+        state = data.get('marriageState', '').strip()
+        if city and state:
+            # Construct "the Borough of Fort Lee, State of New Jersey"
+            processed['ceremonyLocation'] = f"the Borough of {city}, State of {state}"
+    
+    return processed
+
+
 # State configuration
 STATE_CONFIGS = {
     'ny': {
@@ -155,6 +254,10 @@ def generate_form(state, form_name):
     """Generate a specific form for a state."""
     data = request.get_json()
     
+    # Preprocess NJ addresses and derived fields
+    if state == "nj":
+        data = preprocess_nj_data(data)
+    
     try:
         generator = get_generator(state, form_name)
         
@@ -184,6 +287,10 @@ def generate_phase1_package(state):
         return jsonify({"error": f"Phase 1 not available for state: {state}"}), 400
     
     data = request.get_json()
+    
+    # Preprocess NJ addresses and derived fields
+    if state == "nj":
+        data = preprocess_nj_data(data)
     
     try:
         zip_buffer = io.BytesIO()
@@ -232,6 +339,10 @@ def generate_phase2_package(state):
         return jsonify({"error": f"Phase 2 not available for state: {state}"}), 400
     
     data = request.get_json()
+    
+    # Preprocess NJ addresses and derived fields
+    if state == "nj":
+        data = preprocess_nj_data(data)
     
     try:
         zip_buffer = io.BytesIO()
@@ -284,6 +395,10 @@ def generate_phase3_package(state):
         return jsonify({"error": f"Phase 3 not available for state: {state}"}), 400
     
     data = request.get_json()
+    
+    # Preprocess NJ addresses and derived fields
+    if state == "nj":
+        data = preprocess_nj_data(data)
     
     try:
         zip_buffer = io.BytesIO()

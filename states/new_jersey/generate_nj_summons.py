@@ -210,8 +210,8 @@ def generate_nj_summons(data, output_path):
             c.drawString(col2_x + 2, row_y, ":")
         if i < len(right_lines) and right_lines[i]:
             text = right_lines[i]
-            # Title lines come after the blank line after docket (index 7+)
-            is_title = (i >= 7)
+            # Only "SUMMONS" title is bold in the caption
+            is_title = (text == "SUMMONS")
             draw_font = FONT_BOLD if is_title else FONT
             c.setFont(draw_font, FONT_SIZE)
             if text == docket_line_text:
