@@ -79,6 +79,9 @@ STATE_CONFIGS = {
             'jod': 'generate_nj_jod',
             'summons': 'generate_nj_summons',
         },
+        'phase1': ['complaint', 'verification', 'cdr-plaintiff', 'cdr-defendant', 'insurance', 'summons'],
+        'phase2': ['complaint', 'verification', 'cdr-plaintiff', 'cdr-defendant', 'insurance', 'summons', 'acknowledgment'],
+        'phase3': ['jod-cert-plaintiff', 'jod-cert-defendant', 'jod'],
     },
 }
 
@@ -169,6 +172,54 @@ def generate_form(state, form_name):
     except Exception as e:
         app.logger.error(f"Form generation error ({state}/{form_name}): {e}")
         return jsonify({"error": "Failed to generate form"}), 500
+
+
+@app.route('/generate/<state>/phase1-package', methods=['POST'])
+def generate_phase1_package(state):
+    """Generate all Phase 1 forms for a state as a ZIP file."""
+    if state not in STATE_CONFIGS:
+        return jsonify({"error": f"Unsupported state: {state}"}), 400
+    
+    if 'phase1' not in STATE_CONFIGS[state]:
+        return jsonify({"error": f"Phase 1 not available for state: {state}"}), 400
+    
+    data = request.get_json()
+    
+    try:
+        zip_buffer = io.BytesIO()
+        
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+            form_list = STATE_CONFIGS[state]['phase1'].copy()
+            
+            for form_name in form_list:
+                generator = get_generator(state, form_name)
+                
+                with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
+                    tmp_path = tmp.name
+                
+                generator(data, tmp_path)
+                
+                filename = f"{form_name.upper()}.pdf"
+                with open(tmp_path, 'rb') as f:
+                    zf.writestr(filename, f.read())
+                
+                os.unlink(tmp_path)
+        
+        zip_buffer.seek(0)
+        
+        plaintiff = data.get('plaintiffName', 'DivorceGPT').replace(' ', '_')
+        return send_file(
+            zip_buffer,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name=f"{state.upper()}_Phase1_Package_{plaintiff}.zip"
+        )
+        
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        app.logger.error(f"Phase 1 package error ({state}): {e}")
+        return jsonify({"error": "Failed to generate package"}), 500
 
 
 @app.route('/generate/<state>/phase2-package', methods=['POST'])
