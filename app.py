@@ -64,6 +64,22 @@ STATE_CONFIGS = {
     #         'decree': 'generate_decree',
     #     },
     # },
+    'nj': {
+        'name': 'New Jersey',
+        'module': 'new_jersey',
+        'forms': {
+            'verification': 'generate_nj_verification',
+            'complaint': 'generate_nj_complaint',
+            'cdr-plaintiff': 'generate_nj_cdr_plaintiff',
+            'cdr-defendant': 'generate_nj_cdr_defendant',
+            'insurance': 'generate_nj_insurance',
+            'jod-cert-plaintiff': 'generate_nj_jod_cert_plaintiff',
+            'jod-cert-defendant': 'generate_nj_jod_cert_defendant',
+            'acknowledgment': 'generate_nj_acknowledgment',
+            'jod': 'generate_nj_jod',
+            'summons': 'generate_nj_summons',
+        },
+    },
 }
 
 
