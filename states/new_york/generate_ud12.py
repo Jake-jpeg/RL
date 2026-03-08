@@ -72,7 +72,7 @@ def generate_ud12(data, output_path):
     y -= LINE_HEIGHT
     
     c.setFont("Times-Roman", 12)
-    c.drawString(MARGIN_LEFT, y, f"{plaintiff_name},")
+    c.drawString(MARGIN_LEFT, y, f"{plaintiff_name_upper},")
     
     # Right side - Index No. and document title
     right_x = PAGE_WIDTH/2 + 95
@@ -97,9 +97,11 @@ def generate_ud12(data, output_path):
     y -= LINE_HEIGHT * 1.5
     
     defendant_name = data.get('defendantName', '').strip()
+    plaintiff_name_upper = plaintiff_name.upper()
+    defendant_name_upper = defendant_name.upper()
     c.setFont("Times-Roman", 12)
     if defendant_name:
-        c.drawString(MARGIN_LEFT, y, f"{defendant_name},")
+        c.drawString(MARGIN_LEFT, y, f"{defendant_name_upper},")
     else:
         c.drawString(MARGIN_LEFT, y, "_______________________,")
     y -= LINE_HEIGHT

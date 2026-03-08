@@ -75,6 +75,8 @@ def generate_ud6(data, output_path):
     
     plaintiff_name = data.get('plaintiffName', '').strip()
     defendant_name = data.get('defendantName', '').strip()
+    plaintiff_name_upper = plaintiff_name.upper()
+    defendant_name_upper = defendant_name.upper()
     index_number = data.get('indexNumber', '').strip()
     
     plaintiff_address = data.get('plaintiffAddress', '').strip()
@@ -116,7 +118,7 @@ def generate_ud6(data, output_path):
     
     # Plaintiff name
     c.setFont("Times-Roman", 12)
-    c.drawString(MARGIN_LEFT, y, f"{plaintiff_name},")
+    c.drawString(MARGIN_LEFT, y, f"{plaintiff_name_upper},")
     
     # Index No. (right side)
     index_display = index_number if index_number else "_______________"
@@ -139,7 +141,7 @@ def generate_ud6(data, output_path):
     
     # Defendant name
     c.setFont("Times-Roman", 12)
-    c.drawString(MARGIN_LEFT, y, f"{defendant_name},")
+    c.drawString(MARGIN_LEFT, y, f"{defendant_name_upper},")
     y -= LINE_HEIGHT
     
     c.setFont("Times-Italic", 12)

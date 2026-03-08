@@ -96,6 +96,8 @@ def generate_ud15(data, output_path):
         raise ValueError("Plaintiff name is required")
     
     defendant_name = data.get('defendantName', '').strip()
+    plaintiff_name_upper = plaintiff_name.upper()
+    defendant_name_upper = defendant_name.upper()
     if not defendant_name:
         raise ValueError("Defendant name is required")
     
@@ -125,7 +127,7 @@ def generate_ud15(data, output_path):
     y -= LINE_HEIGHT
     
     c.setFont("Times-Roman", 12)
-    c.drawString(MARGIN_LEFT, y, f"{plaintiff_name},")
+    c.drawString(MARGIN_LEFT, y, f"{plaintiff_name_upper},")
     
     # Right side - Index No. and Title
     right_x = PAGE_WIDTH / 2
@@ -151,7 +153,7 @@ def generate_ud15(data, output_path):
     y -= LINE_HEIGHT * 0.3
     
     c.setFont("Times-Roman", 12)
-    c.drawString(MARGIN_LEFT, y, f"{defendant_name},")
+    c.drawString(MARGIN_LEFT, y, f"{defendant_name_upper},")
     y -= LINE_HEIGHT
     
     c.setFont("Times-Italic", 12)

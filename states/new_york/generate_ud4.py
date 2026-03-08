@@ -78,6 +78,8 @@ def generate_ud4(data, output_path):
     
     plaintiff_name = data.get('plaintiffName', '').strip()
     defendant_name = data.get('defendantName', '').strip()
+    plaintiff_name_upper = plaintiff_name.upper()
+    defendant_name_upper = defendant_name.upper()
     
     # For the ss: line - default to New York if not provided
     state_signed = data.get('stateSigned', 'NEW YORK').strip().upper()
@@ -115,7 +117,7 @@ def generate_ud4(data, output_path):
     
     # Plaintiff name
     c.setFont("Times-Roman", 12)
-    c.drawString(MARGIN_LEFT, y, f"{plaintiff_name},")
+    c.drawString(MARGIN_LEFT, y, f"{plaintiff_name_upper},")
     
     # Index No. (right side)
     index_number = data.get('indexNumber', '').strip()
@@ -147,7 +149,7 @@ def generate_ud4(data, output_path):
     
     # Defendant name
     c.setFont("Times-Roman", 12)
-    c.drawString(MARGIN_LEFT, y, f"{defendant_name},")
+    c.drawString(MARGIN_LEFT, y, f"{defendant_name_upper},")
     y -= LINE_HEIGHT
     
     c.setFont("Times-Italic", 12)

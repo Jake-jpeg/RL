@@ -146,6 +146,8 @@ def generate_ud10(data, output_path):
     
     plaintiff_name = data.get('plaintiffName', '').strip()
     defendant_name = data.get('defendantName', '').strip()
+    plaintiff_name_upper = plaintiff_name.upper()
+    defendant_name_upper = defendant_name.upper()
     index_number = data.get('indexNumber', '').strip()
     
     # Marriage info
@@ -213,7 +215,7 @@ def generate_ud10(data, output_path):
     y -= LINE_HEIGHT
     
     c.setFont("Times-Roman", 12)
-    c.drawString(MARGIN_LEFT, y, f"{plaintiff_name},")
+    c.drawString(MARGIN_LEFT, y, f"{plaintiff_name_upper},")
     
     # Right side - Index No., Calendar No., and Document Title
     right_x = PAGE_WIDTH/2 + 95
@@ -244,7 +246,7 @@ def generate_ud10(data, output_path):
     y -= LINE_HEIGHT * 0.3
     
     c.setFont("Times-Roman", 12)
-    c.drawString(MARGIN_LEFT, y, f"{defendant_name},")
+    c.drawString(MARGIN_LEFT, y, f"{defendant_name_upper},")
     y -= LINE_HEIGHT
     
     c.setFont("Times-Italic", 12)
