@@ -275,10 +275,10 @@ def generate_nj_jod_cert_plaintiff(data, output_path):
         para_x, y, para_width, line_height=DOUBLE_SPACE)
     y -= DOUBLE_SPACE * 0.2
 
-    # 6. Not seeking child support/custody
+    # 6. Not seeking child support/custody/alimony
     c.drawString(MARGIN_LEFT, y, "6.")
     y = draw_wrapped_justified(c,
-        "I am not seeking child support, custody, or parenting time.",
+        "I am not seeking child support, custody, parenting time, or alimony/spousal support.",
         para_x, y, para_width, line_height=DOUBLE_SPACE)
 
     # =====================================================================

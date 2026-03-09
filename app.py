@@ -132,6 +132,27 @@ def preprocess_nj_data(data):
     return processed
 
 
+# Display-friendly filenames for ZIP packages
+NJ_FORM_DISPLAY_NAMES = {
+    'complaint': 'COMPLAINT',
+    'verification': 'VERIFICATION',
+    'cdr-plaintiff': 'CDR-PLAINTIFF',
+    'cdr-defendant': 'CDR-DEFENDANT',
+    'insurance': 'INSURANCE',
+    'summons': 'SUMMONS',
+    'acknowledgment': 'ACKNOWLEDGMENT_OF_SERVICE',
+    'jod-cert-plaintiff': 'CN12620-PLAINTIFF',
+    'jod-cert-defendant': 'CN12620-DEFENDANT',
+    'jod': 'FINAL_JUDGMENT_OF_DIVORCE',
+}
+
+def get_zip_filename(state, form_name):
+    """Get display-friendly filename for a form in a ZIP package."""
+    if state == 'nj' and form_name in NJ_FORM_DISPLAY_NAMES:
+        return f"{NJ_FORM_DISPLAY_NAMES[form_name]}.pdf"
+    return f"{form_name.upper()}.pdf"
+
+
 # State configuration
 STATE_CONFIGS = {
     'ny': {
@@ -306,7 +327,7 @@ def generate_phase1_package(state):
                 
                 generator(data, tmp_path)
                 
-                filename = f"{form_name.upper()}.pdf"
+                filename = get_zip_filename(state, form_name)
                 with open(tmp_path, 'rb') as f:
                     zf.writestr(filename, f.read())
                 
@@ -362,7 +383,7 @@ def generate_phase2_package(state):
                 
                 generator(data, tmp_path)
                 
-                filename = f"{form_name.upper()}.pdf"
+                filename = get_zip_filename(state, form_name)
                 with open(tmp_path, 'rb') as f:
                     zf.writestr(filename, f.read())
                 
@@ -412,7 +433,7 @@ def generate_phase3_package(state):
                 
                 generator(data, tmp_path)
                 
-                filename = f"{form_name.upper()}.pdf"
+                filename = get_zip_filename(state, form_name)
                 with open(tmp_path, 'rb') as f:
                     zf.writestr(filename, f.read())
                 
