@@ -200,8 +200,7 @@ STATE_CONFIGS = {
             'summons': 'generate_nj_summons',
         },
         'phase1': ['complaint', 'verification', 'cdr-plaintiff', 'cdr-defendant', 'insurance', 'summons'],
-        'phase2': ['complaint', 'verification', 'cdr-plaintiff', 'cdr-defendant', 'insurance', 'summons', 'acknowledgment'],
-        'phase3': ['jod-cert-plaintiff', 'jod-cert-defendant', 'jod'],
+        'phase2': ['complaint', 'verification', 'cdr-plaintiff', 'cdr-defendant', 'insurance', 'summons', 'acknowledgment', 'jod-cert-plaintiff', 'jod-cert-defendant', 'jod'],
     },
 }
 
