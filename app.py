@@ -133,6 +133,13 @@ def preprocess_nj_data(data):
 
 
 # Display-friendly filenames for ZIP packages
+NV_FORM_DISPLAY_NAMES = {
+    'coversheet': 'FAMILY_COURT_COVER_SHEET',
+    'joint-petition': 'JOINT_PETITION_FOR_DIVORCE',
+    'decree': 'DECREE_OF_DIVORCE',
+    'affidavit': 'AFFIDAVIT_OF_RESIDENT_WITNESS',
+}
+
 NJ_FORM_DISPLAY_NAMES = {
     'complaint': 'COMPLAINT',
     'verification': 'VERIFICATION',
@@ -148,6 +155,8 @@ NJ_FORM_DISPLAY_NAMES = {
 
 def get_zip_filename(state, form_name):
     """Get display-friendly filename for a form in a ZIP package."""
+    if state == 'nv' and form_name in NV_FORM_DISPLAY_NAMES:
+        return f"{NV_FORM_DISPLAY_NAMES[form_name]}.pdf"
     if state == 'nj' and form_name in NJ_FORM_DISPLAY_NAMES:
         return f"{NJ_FORM_DISPLAY_NAMES[form_name]}.pdf"
     return f"{form_name.upper()}.pdf"
@@ -175,15 +184,17 @@ STATE_CONFIGS = {
         'phase2': ['ud5', 'ud6', 'ud7', 'ud9', 'ud10', 'ud11', 'ud12'],
         'phase3': ['ud14', 'ud15'],
     },
-    # Future: Nevada, California, etc.
-    # 'nv': {
-    #     'name': 'Nevada',
-    #     'module': 'nevada',
-    #     'forms': {
-    #         'complaint': 'generate_complaint',
-    #         'decree': 'generate_decree',
-    #     },
-    # },
+    'nv': {
+        'name': 'Nevada',
+        'module': 'nevada',
+        'forms': {
+            'joint-petition': 'generate_nv_joint_petition',
+            'decree': 'generate_nv_decree',
+            'affidavit': 'generate_nv_affidavit',
+            'coversheet': 'generate_nv_coversheet',
+        },
+        'phase1': ['coversheet', 'joint-petition', 'decree', 'affidavit'],
+    },
     'nj': {
         'name': 'New Jersey',
         'module': 'new_jersey',
