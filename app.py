@@ -138,6 +138,8 @@ NV_FORM_DISPLAY_NAMES = {
     'joint-petition': 'JOINT_PETITION_FOR_DIVORCE',
     'decree': 'DECREE_OF_DIVORCE',
     'affidavit': 'AFFIDAVIT_OF_RESIDENT_WITNESS',
+    'request-submission': 'REQUEST_FOR_SUBMISSION_AND_INDEX_OF_EXHIBITS',
+    'exhibit-cover': 'EXHIBIT_COVER_PAGE',
 }
 
 NJ_FORM_DISPLAY_NAMES = {
@@ -192,8 +194,11 @@ STATE_CONFIGS = {
             'decree': 'generate_nv_decree',
             'affidavit': 'generate_nv_affidavit',
             'coversheet': 'generate_nv_coversheet',
+            'request-submission': 'generate_nv_request_submission',
+            'exhibit-cover': 'generate_nv_exhibit_cover',
         },
         'phase1': ['coversheet', 'joint-petition', 'decree', 'affidavit'],
+        'phase1_washoe': ['coversheet', 'joint-petition', 'decree', 'affidavit', 'request-submission', 'exhibit-cover'],
     },
     'nj': {
         'name': 'New Jersey',
