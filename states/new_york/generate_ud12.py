@@ -50,6 +50,7 @@ def generate_ud12(data, output_path):
     plaintiff_name = data.get('plaintiffName', '').strip()
     if not plaintiff_name:
         raise ValueError("Plaintiff name is required")
+    plaintiff_name_upper = plaintiff_name.upper()
     
     index_number = data.get('indexNumber', '').strip()
     
