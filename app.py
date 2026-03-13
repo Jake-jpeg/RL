@@ -332,7 +332,11 @@ def generate_phase1_package(state):
         zip_buffer = io.BytesIO()
         
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
-            form_list = STATE_CONFIGS[state]['phase1'].copy()
+            # NV: Washoe County requires 6 forms (adds Request for Submission + Exhibit Cover)
+            if state == 'nv' and data.get('county', '').strip().lower() == 'washoe':
+                form_list = STATE_CONFIGS[state]['phase1_washoe'].copy()
+            else:
+                form_list = STATE_CONFIGS[state]['phase1'].copy()
             
             for form_name in form_list:
                 generator = get_generator(state, form_name)
@@ -350,12 +354,16 @@ def generate_phase1_package(state):
         
         zip_buffer.seek(0)
         
-        plaintiff = data.get('plaintiffName', 'DivorceGPT').replace(' ', '_')
+        # NV uses firstSpouseName (Joint Petitioner), not plaintiffName
+        if state == 'nv':
+            filer = data.get('firstSpouseName', 'DivorceGPT').replace(' ', '_')
+        else:
+            filer = data.get('plaintiffName', 'DivorceGPT').replace(' ', '_')
         return send_file(
             zip_buffer,
             mimetype='application/zip',
             as_attachment=True,
-            download_name=f"{state.upper()}_Phase1_Package_{plaintiff}.zip"
+            download_name=f"{state.upper()}_Phase1_Package_{filer}.zip"
         )
         
     except ValueError as e:
