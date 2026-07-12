@@ -16,15 +16,24 @@ States supported: ny (New York), nv (Nevada - coming soon)
 
 import os
 import io
+import hmac
+import time
 import tempfile
 import zipfile
-from flask import Flask, request, jsonify, send_file
+from collections import defaultdict, deque
+from flask import Flask, request, jsonify, send_file, abort
 from flask_cors import CORS
 from importlib import import_module
 
 app = Flask(__name__)
 
-# CORS - allow requests from your frontend
+# Bound request bodies (form payloads are small structured JSON).
+app.config["MAX_CONTENT_LENGTH"] = int(os.environ.get("MAX_REQUEST_BYTES", str(256 * 1024)))
+
+# CORS - allow requests from your frontend.
+# NOTE: CORS is a browser courtesy, NOT authentication. Every /generate
+# route additionally requires the server-to-server bearer token below;
+# the intended caller is the DivorceGPT backend, never a browser.
 CORS(app, origins=[
     "http://localhost:3000",
     "https://squid-app-zsiqz.ondigitalocean.app",
@@ -34,6 +43,90 @@ CORS(app, origins=[
 ], supports_credentials=True)
 
 import re
+
+# =====================================================================
+# SERVER-TO-SERVER AUTHENTICATION (PDF_SERVICE_TOKEN)
+# =====================================================================
+# Every generation/package endpoint requires:
+#   Authorization: Bearer <PDF_SERVICE_TOKEN>
+# - constant-time comparison (hmac.compare_digest);
+# - missing/invalid token => 401 with an identical, information-free body
+#   (never reveals whether a token was close, malformed, or absent);
+# - the token is never logged and never echoed in errors;
+# - /health stays open but confidential-detail-free.
+# If PDF_SERVICE_TOKEN is unset the service refuses generation entirely
+# (fail closed) rather than running open.
+
+_RATE_BUCKETS = defaultdict(deque)  # ip -> recent request timestamps
+RATE_LIMIT_MAX = int(os.environ.get("RATE_LIMIT_MAX", "30"))
+RATE_LIMIT_WINDOW_S = int(os.environ.get("RATE_LIMIT_WINDOW_S", "60"))
+
+
+def _client_ip():
+    fwd = request.headers.get("X-Forwarded-For", "")
+    return (fwd.split(",")[0].strip() if fwd else request.remote_addr) or "unknown"
+
+
+def _unauthorized():
+    resp = jsonify({"error": "Unauthorized"})
+    resp.status_code = 401
+    resp.headers["WWW-Authenticate"] = "Bearer"
+    return resp
+
+
+@app.before_request
+def _guard_generate_routes():
+    """Auth + rate limit for every /generate path (incl. legacy routes)."""
+    if not request.path.startswith("/generate"):
+        return None
+    if request.method == "OPTIONS":  # CORS preflight carries no credentials
+        return None
+
+    expected = os.environ.get("PDF_SERVICE_TOKEN", "")
+    if not expected:
+        # Fail closed: an unconfigured service must not generate documents.
+        return jsonify({"error": "Service not configured"}), 503
+
+    header = request.headers.get("Authorization", "")
+    supplied = header[7:] if header.startswith("Bearer ") else ""
+    if not supplied or not hmac.compare_digest(
+        supplied.encode("utf-8"), expected.encode("utf-8")
+    ):
+        return _unauthorized()
+
+    # Simple fixed-window rate limit per source (single-instance staging).
+    now = time.monotonic()
+    bucket = _RATE_BUCKETS[_client_ip()]
+    while bucket and now - bucket[0] > RATE_LIMIT_WINDOW_S:
+        bucket.popleft()
+    if len(bucket) >= RATE_LIMIT_MAX:
+        return jsonify({"error": "Too many requests"}), 429
+    bucket.append(now)
+    return None
+
+
+def sanitize_name_component(value, fallback="Document"):
+    """Filenames derive only from [A-Za-z0-9_-]; everything else is dropped."""
+    cleaned = re.sub(r"[^A-Za-z0-9_-]+", "_", str(value or "")).strip("_")
+    return cleaned[:60] or fallback
+
+
+def get_request_data():
+    """Parse the JSON body; malformed or non-object JSON => 400, never 500."""
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        abort(400, description="Request body must be a JSON object")
+    return data
+
+
+@app.errorhandler(400)
+def _bad_request(e):
+    return jsonify({"error": getattr(e, "description", "Bad request")}), 400
+
+
+@app.errorhandler(413)
+def _too_large(e):
+    return jsonify({"error": "Request body too large"}), 413
 
 # =====================================================================
 # ADDRESS PARSING UTILITY
@@ -227,7 +320,9 @@ def health_check():
     return jsonify({
         "status": "healthy",
         "service": "divorcegpt-pdf-multistate",
-        "states": list(STATE_CONFIGS.keys())
+        "states": list(STATE_CONFIGS.keys()),
+        "auth_required": bool(os.environ.get("PDF_SERVICE_TOKEN")),
+        "app_stage": os.environ.get("APP_STAGE", ""),
     })
 
 
@@ -288,7 +383,11 @@ def generate_pdf_response(generator_func, data, filename):
 @app.route('/generate/<state>/<form_name>', methods=['POST'])
 def generate_form(state, form_name):
     """Generate a specific form for a state."""
-    data = request.get_json()
+    if state not in STATE_CONFIGS:
+        return jsonify({"error": f"Unsupported state: {state}"}), 400
+    if form_name not in STATE_CONFIGS[state]['forms']:
+        return jsonify({"error": f"Unknown form '{form_name}' for state '{state}'"}), 400
+    data = get_request_data()
     
     # Preprocess NJ addresses and derived fields
     if state == "nj":
@@ -297,9 +396,9 @@ def generate_form(state, form_name):
     try:
         generator = get_generator(state, form_name)
         
-        # Get plaintiff or defendant name for filename
-        plaintiff = data.get('plaintiffName', 'Document').replace(' ', '_')
-        defendant = data.get('defendantName', 'Document').replace(' ', '_')
+        # Get plaintiff or defendant name for filename (sanitized)
+        plaintiff = sanitize_name_component(data.get('plaintiffName', ''), 'Document')
+        defendant = sanitize_name_component(data.get('defendantName', ''), 'Document')
         name = plaintiff if plaintiff != 'Document' else defendant
         
         filename = f"{state.upper()}_{form_name.upper()}_{name}.pdf"
@@ -322,7 +421,7 @@ def generate_phase1_package(state):
     if 'phase1' not in STATE_CONFIGS[state]:
         return jsonify({"error": f"Phase 1 not available for state: {state}"}), 400
     
-    data = request.get_json()
+    data = get_request_data()
     
     # Preprocess NJ addresses and derived fields
     if state == "nj":
@@ -356,9 +455,9 @@ def generate_phase1_package(state):
         
         # NV uses firstSpouseName (Joint Petitioner), not plaintiffName
         if state == 'nv':
-            filer = data.get('firstSpouseName', 'DivorceGPT').replace(' ', '_')
+            filer = sanitize_name_component(data.get('firstSpouseName', ''), 'DivorceGPT')
         else:
-            filer = data.get('plaintiffName', 'DivorceGPT').replace(' ', '_')
+            filer = sanitize_name_component(data.get('plaintiffName', ''), 'DivorceGPT')
         return send_file(
             zip_buffer,
             mimetype='application/zip',
@@ -382,7 +481,7 @@ def generate_phase2_package(state):
     if 'phase2' not in STATE_CONFIGS[state]:
         return jsonify({"error": f"Phase 2 not available for state: {state}"}), 400
     
-    data = request.get_json()
+    data = get_request_data()
     
     # Preprocess NJ addresses and derived fields
     if state == "nj":
@@ -414,7 +513,7 @@ def generate_phase2_package(state):
         
         zip_buffer.seek(0)
         
-        plaintiff = data.get('plaintiffName', 'DivorceGPT').replace(' ', '_')
+        plaintiff = sanitize_name_component(data.get('plaintiffName', ''), 'DivorceGPT')
         return send_file(
             zip_buffer,
             mimetype='application/zip',
@@ -438,7 +537,7 @@ def generate_phase3_package(state):
     if 'phase3' not in STATE_CONFIGS[state]:
         return jsonify({"error": f"Phase 3 not available for state: {state}"}), 400
     
-    data = request.get_json()
+    data = get_request_data()
     
     # Preprocess NJ addresses and derived fields
     if state == "nj":
@@ -464,7 +563,7 @@ def generate_phase3_package(state):
         
         zip_buffer.seek(0)
         
-        plaintiff = data.get('plaintiffName', 'DivorceGPT').replace(' ', '_')
+        plaintiff = sanitize_name_component(data.get('plaintiffName', ''), 'DivorceGPT')
         return send_file(
             zip_buffer,
             mimetype='application/zip',
