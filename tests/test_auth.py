@@ -163,7 +163,7 @@ def test_ny_ud1_generates_with_token(client):
     assert r.data[:5] == b"%PDF-"
 
 
-def test_generator_failure_returns_500_and_cleans_temp_files(client, monkeypatch, tmp_path):
+def test_generator_failure_returns_500_and_cleans_temp_files(client, monkeypatch):
     """Repair regression: a crashing generator must not orphan temp files."""
     import glob
     import tempfile as tf
