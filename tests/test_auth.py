@@ -161,3 +161,22 @@ def test_ny_ud1_generates_with_token(client):
     )
     assert r.status_code == 200
     assert r.data[:5] == b"%PDF-"
+
+
+def test_generator_failure_returns_500_and_cleans_temp_files(client, monkeypatch, tmp_path):
+    """Repair regression: a crashing generator must not orphan temp files."""
+    import glob
+    import tempfile as tf
+    import app as app_module
+
+    def exploding_generator(data, path):
+        # Simulate a generator crash AFTER the temp file exists.
+        raise RuntimeError("synthetic generator failure")
+
+    monkeypatch.setattr(app_module, "get_generator", lambda s, f: exploding_generator)
+    before = set(glob.glob(os.path.join(tf.gettempdir(), "*.pdf")))
+    r = client.post("/generate/nj/verification", json=SYNTH_NJ, headers=auth())
+    after = set(glob.glob(os.path.join(tf.gettempdir(), "*.pdf")))
+    assert r.status_code == 500
+    assert r.get_json() == {"error": "Failed to generate PDF"}
+    assert after == before  # no orphaned temp file

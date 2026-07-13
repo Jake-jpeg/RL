@@ -356,17 +356,19 @@ def generate_pdf_response(generator_func, data, filename):
         # Create temp file
         with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
             tmp_path = tmp.name
-        
-        # Generate PDF
-        generator_func(data, tmp_path)
-        
-        # Read and return
-        with open(tmp_path, 'rb') as f:
-            pdf_bytes = f.read()
-        
-        # Cleanup
-        os.unlink(tmp_path)
-        
+
+        try:
+            # Generate PDF
+            generator_func(data, tmp_path)
+
+            # Read and return
+            with open(tmp_path, 'rb') as f:
+                pdf_bytes = f.read()
+        finally:
+            # Cleanup even when a generator raises (no orphaned temp files).
+            if os.path.exists(tmp_path):
+                os.unlink(tmp_path)
+
         return send_file(
             io.BytesIO(pdf_bytes),
             mimetype='application/pdf',
@@ -442,14 +444,16 @@ def generate_phase1_package(state):
                 
                 with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
                     tmp_path = tmp.name
-                
-                generator(data, tmp_path)
-                
-                filename = get_zip_filename(state, form_name)
-                with open(tmp_path, 'rb') as f:
-                    zf.writestr(filename, f.read())
-                
-                os.unlink(tmp_path)
+
+                try:
+                    generator(data, tmp_path)
+
+                    filename = get_zip_filename(state, form_name)
+                    with open(tmp_path, 'rb') as f:
+                        zf.writestr(filename, f.read())
+                finally:
+                    if os.path.exists(tmp_path):
+                        os.unlink(tmp_path)
         
         zip_buffer.seek(0)
         
@@ -502,14 +506,16 @@ def generate_phase2_package(state):
                 
                 with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
                     tmp_path = tmp.name
-                
-                generator(data, tmp_path)
-                
-                filename = get_zip_filename(state, form_name)
-                with open(tmp_path, 'rb') as f:
-                    zf.writestr(filename, f.read())
-                
-                os.unlink(tmp_path)
+
+                try:
+                    generator(data, tmp_path)
+
+                    filename = get_zip_filename(state, form_name)
+                    with open(tmp_path, 'rb') as f:
+                        zf.writestr(filename, f.read())
+                finally:
+                    if os.path.exists(tmp_path):
+                        os.unlink(tmp_path)
         
         zip_buffer.seek(0)
         
@@ -552,14 +558,16 @@ def generate_phase3_package(state):
                 
                 with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
                     tmp_path = tmp.name
-                
-                generator(data, tmp_path)
-                
-                filename = get_zip_filename(state, form_name)
-                with open(tmp_path, 'rb') as f:
-                    zf.writestr(filename, f.read())
-                
-                os.unlink(tmp_path)
+
+                try:
+                    generator(data, tmp_path)
+
+                    filename = get_zip_filename(state, form_name)
+                    with open(tmp_path, 'rb') as f:
+                        zf.writestr(filename, f.read())
+                finally:
+                    if os.path.exists(tmp_path):
+                        os.unlink(tmp_path)
         
         zip_buffer.seek(0)
         
