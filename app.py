@@ -191,40 +191,6 @@ def parse_address(full_address):
     return (full_address, '', '')
 
 
-def preprocess_nj_data(data):
-    """
-    Preprocess data from DivorceGPT AI into the format NJ ReportLab generators expect.
-    Parses combined addresses, derives ceremony location, etc.
-    """
-    processed = dict(data)  # copy
-    
-    # Parse plaintiff address
-    p_addr = data.get('plaintiffAddress', '')
-    if p_addr and not data.get('plaintiffCityStateZip'):
-        street, city_state_zip, full_city_state = parse_address(p_addr)
-        processed['plaintiffAddress'] = street
-        processed['plaintiffCityStateZip'] = city_state_zip
-        processed['plaintiffFullCityState'] = full_city_state
-    
-    # Parse defendant address
-    d_addr = data.get('defendantAddress', '')
-    if d_addr and not data.get('defendantCityStateZip'):
-        street, city_state_zip, full_city_state = parse_address(d_addr)
-        processed['defendantAddress'] = street
-        processed['defendantCityStateZip'] = city_state_zip
-        processed['defendantFullCityState'] = full_city_state
-    
-    # Derive ceremony location from marriageCity + marriageState
-    if not data.get('ceremonyLocation'):
-        city = data.get('marriageCity', '').strip()
-        state = data.get('marriageState', '').strip()
-        if city and state:
-            # Construct "the Borough of Fort Lee, State of New Jersey"
-            processed['ceremonyLocation'] = f"the Borough of {city}, State of {state}"
-    
-    return processed
-
-
 # Display-friendly filenames for ZIP packages
 NV_FORM_DISPLAY_NAMES = {
     'coversheet': 'FAMILY_COURT_COVER_SHEET',
@@ -235,25 +201,10 @@ NV_FORM_DISPLAY_NAMES = {
     'exhibit-cover': 'EXHIBIT_COVER_PAGE',
 }
 
-NJ_FORM_DISPLAY_NAMES = {
-    'complaint': 'COMPLAINT',
-    'verification': 'VERIFICATION',
-    'cdr-plaintiff': 'CDR-PLAINTIFF',
-    'cdr-defendant': 'CDR-DEFENDANT',
-    'insurance': 'INSURANCE',
-    'summons': 'SUMMONS',
-    'acknowledgment': 'ACKNOWLEDGMENT_OF_SERVICE',
-    'jod-cert-plaintiff': 'CN12620-PLAINTIFF',
-    'jod-cert-defendant': 'CN12620-DEFENDANT',
-    'jod': 'FINAL_JUDGMENT_OF_DIVORCE',
-}
-
 def get_zip_filename(state, form_name):
     """Get display-friendly filename for a form in a ZIP package."""
     if state == 'nv' and form_name in NV_FORM_DISPLAY_NAMES:
         return f"{NV_FORM_DISPLAY_NAMES[form_name]}.pdf"
-    if state == 'nj' and form_name in NJ_FORM_DISPLAY_NAMES:
-        return f"{NJ_FORM_DISPLAY_NAMES[form_name]}.pdf"
     return f"{form_name.upper()}.pdf"
 
 
@@ -292,24 +243,6 @@ STATE_CONFIGS = {
         },
         'phase1': ['coversheet', 'joint-petition', 'decree', 'affidavit'],
         'phase1_washoe': ['coversheet', 'joint-petition', 'decree', 'affidavit', 'request-submission', 'exhibit-cover'],
-    },
-    'nj': {
-        'name': 'New Jersey',
-        'module': 'new_jersey',
-        'forms': {
-            'verification': 'generate_nj_verification',
-            'complaint': 'generate_nj_complaint',
-            'cdr-plaintiff': 'generate_nj_cdr_plaintiff',
-            'cdr-defendant': 'generate_nj_cdr_defendant',
-            'insurance': 'generate_nj_insurance',
-            'jod-cert-plaintiff': 'generate_nj_jod_cert_plaintiff',
-            'jod-cert-defendant': 'generate_nj_jod_cert_defendant',
-            'acknowledgment': 'generate_nj_acknowledgment',
-            'jod': 'generate_nj_jod',
-            'summons': 'generate_nj_summons',
-        },
-        'phase1': ['complaint', 'verification', 'cdr-plaintiff', 'cdr-defendant', 'insurance', 'summons'],
-        'phase2': ['complaint', 'verification', 'cdr-plaintiff', 'cdr-defendant', 'insurance', 'summons', 'acknowledgment', 'jod-cert-plaintiff', 'jod-cert-defendant', 'jod'],
     },
 }
 
@@ -391,10 +324,6 @@ def generate_form(state, form_name):
         return jsonify({"error": f"Unknown form '{form_name}' for state '{state}'"}), 400
     data = get_request_data()
     
-    # Preprocess NJ addresses and derived fields
-    if state == "nj":
-        data = preprocess_nj_data(data)
-    
     try:
         generator = get_generator(state, form_name)
         
@@ -424,10 +353,6 @@ def generate_phase1_package(state):
         return jsonify({"error": f"Phase 1 not available for state: {state}"}), 400
     
     data = get_request_data()
-    
-    # Preprocess NJ addresses and derived fields
-    if state == "nj":
-        data = preprocess_nj_data(data)
     
     try:
         zip_buffer = io.BytesIO()
@@ -487,10 +412,6 @@ def generate_phase2_package(state):
     
     data = get_request_data()
     
-    # Preprocess NJ addresses and derived fields
-    if state == "nj":
-        data = preprocess_nj_data(data)
-    
     try:
         zip_buffer = io.BytesIO()
         
@@ -544,10 +465,6 @@ def generate_phase3_package(state):
         return jsonify({"error": f"Phase 3 not available for state: {state}"}), 400
     
     data = get_request_data()
-    
-    # Preprocess NJ addresses and derived fields
-    if state == "nj":
-        data = preprocess_nj_data(data)
     
     try:
         zip_buffer = io.BytesIO()
