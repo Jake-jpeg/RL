@@ -215,6 +215,7 @@ STATE_CONFIGS = {
         'module': 'new_york',
         'forms': {
             'complaint': 'generate_complaint',
+            'stipulation': 'generate_stipulation',
             'ud1': 'generate_ud1',
             'ud4': 'generate_ud4',
             'ud5': 'generate_ud5',
