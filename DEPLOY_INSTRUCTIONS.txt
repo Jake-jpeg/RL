@@ -54,16 +54,6 @@ POST /generate/ny/phase2-package
 
 Your frontend doesn't need to change - backward compatible!
 
-## TO ADD NEVADA LATER
-
-1. Create: states/nevada/ folder
-2. Add Nevada generator files
-3. Update app.py STATE_CONFIGS
-4. git push
-5. Done - same app, no extra cost
-
----
-
 ## STRUCTURE
 
 ReportLab/

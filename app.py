@@ -11,7 +11,7 @@ Endpoints:
 - POST /generate/{state}/package - Generate form packages
 - GET  /health - Health check
 
-States supported: ny (New York), nv (Nevada - coming soon)
+States supported: ny (New York)
 """
 
 import os
@@ -128,83 +128,8 @@ def _bad_request(e):
 def _too_large(e):
     return jsonify({"error": "Request body too large"}), 413
 
-# =====================================================================
-# ADDRESS PARSING UTILITY
-# =====================================================================
-# DivorceGPT AI collects a single combined address like:
-#   "2030 Hudson Street, Fort Lee, NJ 07024"
-# ReportLab generators expect split fields:
-#   plaintiffAddress = "2030 Hudson Street"
-#   plaintiffCityStateZip = "Fort Lee, NJ 07024"
-#   plaintiffFullCityState = "Fort Lee, New Jersey"
-# This utility parses the combined address into the split format.
-
-STATE_ABBREVS = {
-    'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas', 'CA': 'California',
-    'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware', 'FL': 'Florida', 'GA': 'Georgia',
-    'HI': 'Hawaii', 'ID': 'Idaho', 'IL': 'Illinois', 'IN': 'Indiana', 'IA': 'Iowa',
-    'KS': 'Kansas', 'KY': 'Kentucky', 'LA': 'Louisiana', 'ME': 'Maine', 'MD': 'Maryland',
-    'MA': 'Massachusetts', 'MI': 'Michigan', 'MN': 'Minnesota', 'MS': 'Mississippi', 'MO': 'Missouri',
-    'MT': 'Montana', 'NE': 'Nebraska', 'NV': 'Nevada', 'NH': 'New Hampshire', 'NJ': 'New Jersey',
-    'NM': 'New Mexico', 'NY': 'New York', 'NC': 'North Carolina', 'ND': 'North Dakota', 'OH': 'Ohio',
-    'OK': 'Oklahoma', 'OR': 'Oregon', 'PA': 'Pennsylvania', 'RI': 'Rhode Island', 'SC': 'South Carolina',
-    'SD': 'South Dakota', 'TN': 'Tennessee', 'TX': 'Texas', 'UT': 'Utah', 'VT': 'Vermont',
-    'VA': 'Virginia', 'WA': 'Washington', 'WV': 'West Virginia', 'WI': 'Wisconsin', 'WY': 'Wyoming',
-    'DC': 'District of Columbia',
-}
-
-def parse_address(full_address):
-    """
-    Parse a combined address into street, city/state/zip, and full city/state.
-    Input:  "2030 Hudson Street, Fort Lee, NJ 07024"
-    Output: ("2030 Hudson Street", "Fort Lee, NJ 07024", "Fort Lee, New Jersey")
-    """
-    if not full_address:
-        return ('', '', '')
-    
-    # Try to match: street, city, STATE ZIP
-    match = re.match(
-        r'^(.+?),\s*(.+?),\s*([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$',
-        full_address.strip()
-    )
-    if match:
-        street = match.group(1).strip()
-        city = match.group(2).strip()
-        state_abbr = match.group(3).strip()
-        zipcode = match.group(4).strip()
-        state_full = STATE_ABBREVS.get(state_abbr, state_abbr)
-        city_state_zip = f"{city}, {state_abbr} {zipcode}"
-        full_city_state = f"{city}, {state_full}"
-        return (street, city_state_zip, full_city_state)
-    
-    # Fallback: try splitting by last comma
-    parts = full_address.rsplit(',', 1)
-    if len(parts) == 2:
-        street_and_city = parts[0].strip()
-        state_zip = parts[1].strip()
-        # Try to split street from city
-        street_parts = street_and_city.rsplit(',', 1)
-        if len(street_parts) == 2:
-            return (street_parts[0].strip(), f"{street_parts[1].strip()}, {state_zip}", street_parts[1].strip())
-    
-    # Last resort: return as-is for street, empty for others
-    return (full_address, '', '')
-
-
-# Display-friendly filenames for ZIP packages
-NV_FORM_DISPLAY_NAMES = {
-    'coversheet': 'FAMILY_COURT_COVER_SHEET',
-    'joint-petition': 'JOINT_PETITION_FOR_DIVORCE',
-    'decree': 'DECREE_OF_DIVORCE',
-    'affidavit': 'AFFIDAVIT_OF_RESIDENT_WITNESS',
-    'request-submission': 'REQUEST_FOR_SUBMISSION_AND_INDEX_OF_EXHIBITS',
-    'exhibit-cover': 'EXHIBIT_COVER_PAGE',
-}
-
 def get_zip_filename(state, form_name):
     """Get display-friendly filename for a form in a ZIP package."""
-    if state == 'nv' and form_name in NV_FORM_DISPLAY_NAMES:
-        return f"{NV_FORM_DISPLAY_NAMES[form_name]}.pdf"
     return f"{form_name.upper()}.pdf"
 
 
@@ -231,20 +156,6 @@ STATE_CONFIGS = {
         'phase1': ['ud1'],
         'phase2': ['ud5', 'ud6', 'ud7', 'ud9', 'ud10', 'ud11', 'ud12'],
         'phase3': ['ud14', 'ud15'],
-    },
-    'nv': {
-        'name': 'Nevada',
-        'module': 'nevada',
-        'forms': {
-            'joint-petition': 'generate_nv_joint_petition',
-            'decree': 'generate_nv_decree',
-            'affidavit': 'generate_nv_affidavit',
-            'coversheet': 'generate_nv_coversheet',
-            'request-submission': 'generate_nv_request_submission',
-            'exhibit-cover': 'generate_nv_exhibit_cover',
-        },
-        'phase1': ['coversheet', 'joint-petition', 'decree', 'affidavit'],
-        'phase1_washoe': ['coversheet', 'joint-petition', 'decree', 'affidavit', 'request-submission', 'exhibit-cover'],
     },
 }
 
@@ -360,11 +271,7 @@ def generate_phase1_package(state):
         zip_buffer = io.BytesIO()
         
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
-            # NV: Washoe County requires 6 forms (adds Request for Submission + Exhibit Cover)
-            if state == 'nv' and data.get('county', '').strip().lower() == 'washoe':
-                form_list = STATE_CONFIGS[state]['phase1_washoe'].copy()
-            else:
-                form_list = STATE_CONFIGS[state]['phase1'].copy()
+            form_list = STATE_CONFIGS[state]['phase1'].copy()
             
             for form_name in form_list:
                 generator = get_generator(state, form_name)
@@ -384,11 +291,7 @@ def generate_phase1_package(state):
         
         zip_buffer.seek(0)
         
-        # NV uses firstSpouseName (Joint Petitioner), not plaintiffName
-        if state == 'nv':
-            filer = sanitize_name_component(data.get('firstSpouseName', ''), 'DivorceGPT')
-        else:
-            filer = sanitize_name_component(data.get('plaintiffName', ''), 'DivorceGPT')
+        filer = sanitize_name_component(data.get('plaintiffName', ''), 'DivorceGPT')
         return send_file(
             zip_buffer,
             mimetype='application/zip',
