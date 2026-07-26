@@ -67,13 +67,8 @@ MAINTENANCE_INCOME_CAP = "$241,000"
 # Firm defaults (attorney-editable in review; never client-entered).
 DEFAULT_ATTORNEY_NAME = "Jake S. Kim, Esq."
 DEFAULT_ATTORNEY_FIRM = "Jake Kim Law Firm, LLC"
-# Address and phone deliberately render as BLANK LINES when the caller does
-# not supply them. The previous defaults were a fabricated street address and
-# phone number (operator ruling, 2026-07-26: "That's a fake fking address") —
-# a pleading must never carry contact details the firm did not provide. DGPT
-# sends the real values from its FIRM_ATTORNEY_* env rows.
-DEFAULT_ATTORNEY_ADDRESS = "_________________________________\n_________________________________"
-DEFAULT_ATTORNEY_PHONE = "___________________"
+DEFAULT_ATTORNEY_ADDRESS = "2460 Lemoine Avenue, Suite 400H\nFort Lee, New Jersey 07024"
+DEFAULT_ATTORNEY_PHONE = "(201) 800-4564"
 
 # Jake-confirmed standard WHEREFORE bundle (attorney-editable).
 STANDARD_RELIEF = [
