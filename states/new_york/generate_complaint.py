@@ -85,6 +85,27 @@ STANDARD_RELIEF = [
     "Granting the Plaintiff such other and further relief as this Court deems just and proper.",
 ]
 
+CHILD_RELIEF = [
+    "Awarding custody and a parenting schedule for the unemancipated children of "
+    "the marriage in accordance with the parties' agreement and the best interests "
+    "of the children;",
+    "Awarding child support in accordance with the Child Support Standards Act, "
+    "Domestic Relations Law § 240(1-b), including the parties' pro rata shares of "
+    "health-care and child-care expenses;",
+]
+
+
+def relief_bundle(children=0):
+    """The WHEREFORE clause. A complaint that recites children of the marriage
+    must also demand child relief -- the attorney edits it, but it is never
+    silently absent."""
+    relief = list(STANDARD_RELIEF)
+    if children and int(children) > 0:
+        # After "Declaring the separate property of each party" (index 2).
+        relief[3:3] = CHILD_RELIEF
+    return relief
+
+
 ORDINALS = ["FIRST", "SECOND", "THIRD", "FOURTH", "FIFTH", "SIXTH", "SEVENTH",
             "EIGHTH", "NINTH", "TENTH", "ELEVENTH", "TWELFTH"]
 
@@ -295,14 +316,24 @@ def drl253_clause(ceremony_type):
     )
 
 
-def children_clause(count):
+def children_clause(count, detail=""):
+    """DRL para FIFTH. The pleading recites each child's name and date of
+    birth -- that is exactly what the intake collects and the only child
+    information that belongs on the complaint."""
     if not count or int(count) == 0:
         return "There are no unemancipated children of this marriage."
     n = int(count)
     word = "is one unemancipated child" if n == 1 else f"are {n} unemancipated children"
+    detail = (detail or "").strip()
+    if detail:
+        return (
+            f"There {word} of this marriage, namely: {detail}. [ATTORNEY REVIEW "
+            f"REQUIRED -- child-related relief must be completed by counsel.]"
+        )
     return (
-        f"There {word} of this marriage. [ATTORNEY REVIEW REQUIRED — child-related "
-        f"relief must be completed by counsel.]"
+        f"There {word} of this marriage. [ATTORNEY REVIEW REQUIRED -- name and "
+        f"date of birth of each child must be supplied, and child-related relief "
+        f"completed, by counsel.]"
     )
 
 
@@ -331,7 +362,7 @@ def generate_complaint(data, output_path):
     attorney_addr = data.get("attorneyAddress", DEFAULT_ATTORNEY_ADDRESS)
     attorney_phone = data.get("attorneyPhone", DEFAULT_ATTORNEY_PHONE)
     date_signed = (data.get("dateSigned") or "").strip() or "____________________"
-    relief = data.get("reliefBundle") or STANDARD_RELIEF
+    relief = data.get("reliefBundle") or relief_bundle(children)
 
     county_upper = county.upper()
     c = canvas.Canvas(output_path, pagesize=letter)
@@ -354,7 +385,7 @@ def generate_complaint(data, output_path):
         "Both parties are over the age of eighteen (18) years as of the date set forth herein.",
         marriage_clause(data.get("marriageDate"), data.get("marriagePlace"), ceremony_type),
         drl253_clause(ceremony_type),
-        children_clause(children),
+        children_clause(children, data.get("childrenDetail", "")),
         f"The Plaintiff resides at {plaintiff_addr}. The Defendant resides at "
         f"{defendant_addr}.",
         "This marriage has never been altered or dissolved by any judgment of divorce, "
