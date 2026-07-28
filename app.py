@@ -196,36 +196,51 @@ def get_generator(state, form_name):
         raise ValueError(f"Form generator not available: {form_name}")
 
 
-def generate_pdf_response(generator_func, data, filename):
-    """Helper to generate PDF and return as response."""
+def generate_file_response(generator_func, data, filename, suffix='.pdf', mimetype='application/pdf'):
+    """Generate with a temp file and return as a download response."""
     try:
         # Create temp file
-        with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
             tmp_path = tmp.name
 
         try:
-            # Generate PDF
             generator_func(data, tmp_path)
-
-            # Read and return
             with open(tmp_path, 'rb') as f:
-                pdf_bytes = f.read()
+                file_bytes = f.read()
         finally:
             # Cleanup even when a generator raises (no orphaned temp files).
             if os.path.exists(tmp_path):
                 os.unlink(tmp_path)
 
         return send_file(
-            io.BytesIO(pdf_bytes),
-            mimetype='application/pdf',
+            io.BytesIO(file_bytes),
+            mimetype=mimetype,
             as_attachment=True,
             download_name=filename
         )
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
-        app.logger.error(f"PDF generation error: {e}")
-        return jsonify({"error": "Failed to generate PDF"}), 500
+        app.logger.error(f"Document generation error: {e}")
+        return jsonify({"error": "Failed to generate document"}), 500
+
+
+def generate_pdf_response(generator_func, data, filename):
+    """Helper to generate PDF and return as response."""
+    return generate_file_response(generator_func, data, filename)
+
+
+# Forms with an editable Word (.docx) build — operator directive 2026-07-27:
+# the attorney downloads forms in WORD from the matter rail. Phase-1 forms
+# first; the map grows form by form as each docx build is proven. The PDF
+# path exists for every form regardless.
+DOCX_FORMS = {
+    'ny': {
+        'complaint': 'generate_complaint_docx',
+        'ud1': 'generate_ud1_docx',
+    },
+}
+DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
 
 @app.route('/generate/<state>/<form_name>', methods=['POST'])
@@ -236,17 +251,28 @@ def generate_form(state, form_name):
     if form_name not in STATE_CONFIGS[state]['forms']:
         return jsonify({"error": f"Unknown form '{form_name}' for state '{state}'"}), 400
     data = get_request_data()
-    
+
+    fmt = (request.args.get('format') or 'pdf').strip().lower()
+    if fmt not in ('pdf', 'docx'):
+        return jsonify({"error": f"Unsupported format '{fmt}'"}), 400
+    if fmt == 'docx' and form_name not in DOCX_FORMS.get(state, {}):
+        return jsonify({"error": f"No Word build for '{state}/{form_name}' yet — request PDF"}), 400
+
     try:
-        generator = get_generator(state, form_name)
-        
         # Get plaintiff or defendant name for filename (sanitized)
         plaintiff = sanitize_name_component(data.get('plaintiffName', ''), 'Document')
         defendant = sanitize_name_component(data.get('defendantName', ''), 'Document')
         name = plaintiff if plaintiff != 'Document' else defendant
-        
+
+        if fmt == 'docx':
+            state_module = STATE_CONFIGS[state].get('module', state)
+            module = import_module(f'states.{state_module}.docx_forms')
+            generator = getattr(module, DOCX_FORMS[state][form_name])
+            filename = f"{state.upper()}_{form_name.upper()}_{name}.docx"
+            return generate_file_response(generator, data, filename, suffix='.docx', mimetype=DOCX_MIME)
+
+        generator = get_generator(state, form_name)
         filename = f"{state.upper()}_{form_name.upper()}_{name}.pdf"
-        
         return generate_pdf_response(generator, data, filename)
         
     except ValueError as e:
