@@ -157,7 +157,7 @@ def _hanging_allegation(doc, label, text):
     pf = para.paragraph_format
     pf.first_line_indent = Inches(0.5)
     pf.space_after = Pt(12)
-    pf.line_spacing = 1.5
+    pf.line_spacing = 2.0  # 22 NYCRR 202.5(a)(1) — double space
     run = para.add_run(f"{label}: ")
     run.bold = True
     para.add_run(text)
@@ -246,7 +246,7 @@ def generate_complaint_docx(data, output_path):
     _p(doc, f"COUNTY OF {county.upper()}\t)", space_after=18)
     verify = doc.add_paragraph()
     verify.paragraph_format.first_line_indent = Inches(0.5)
-    verify.paragraph_format.line_spacing = 1.5
+    verify.paragraph_format.line_spacing = 2.0  # 22 NYCRR 202.5(a)(1)
     verify.add_run(
         f"{plaintiff}, being duly sworn, deposes and says: I am the Plaintiff in the "
         f"within action. I have read the foregoing Verified Complaint and know the "
@@ -322,7 +322,7 @@ def generate_ud1_docx(data, output_path):
 
     summoned = doc.add_paragraph()
     summoned.paragraph_format.first_line_indent = Inches(0.5)
-    summoned.paragraph_format.line_spacing = 1.5
+    summoned.paragraph_format.line_spacing = 2.0  # 22 NYCRR 202.5(a)(1)
     summoned.paragraph_format.space_after = Pt(12)
     run = summoned.add_run("YOU ARE HEREBY SUMMONED ")
     run.bold = True

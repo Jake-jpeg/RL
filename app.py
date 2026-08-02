@@ -18,12 +18,15 @@ import os
 import io
 import hmac
 import time
+import shutil
 import tempfile
 import zipfile
 from collections import defaultdict, deque
 from flask import Flask, request, jsonify, send_file, abort
 from flask_cors import CORS
 from importlib import import_module
+
+from docx_pdf import ConversionError, docx_to_pdf, libreoffice_available
 
 app = Flask(__name__)
 
@@ -167,6 +170,10 @@ def health_check():
         "status": "healthy",
         "service": "divorcegpt-pdf-multistate",
         "states": list(STATE_CONFIGS.keys()),
+        # Reported, never assumed: the Dockerfile installs libreoffice-writer,
+        # but a buildpack build would not, and the failure would otherwise only
+        # surface as a 500 on somebody's filing day.
+        "docx_to_pdf": libreoffice_available(),
         "auth_required": bool(os.environ.get("PDF_SERVICE_TOKEN")),
         "app_stage": os.environ.get("APP_STAGE", ""),
     })
@@ -230,6 +237,39 @@ def generate_pdf_response(generator_func, data, filename):
     return generate_file_response(generator_func, data, filename)
 
 
+def generate_converted_pdf_response(generator_func, data, filename):
+    """Build a .docx, convert it with LibreOffice, return the PDF.
+
+    One temp directory for both artifacts so the .docx is never left behind:
+    it carries the client's name and address, and this container is shared.
+    """
+    tmp_dir = tempfile.mkdtemp(prefix="dgpt-")
+    try:
+        docx_path = os.path.join(tmp_dir, "document.docx")
+        generator_func(data, docx_path)
+        pdf_path = docx_to_pdf(docx_path, out_dir=tmp_dir)
+        with open(pdf_path, "rb") as f:
+            pdf_bytes = f.read()
+        return send_file(
+            io.BytesIO(pdf_bytes),
+            mimetype="application/pdf",
+            as_attachment=True,
+            download_name=filename,
+        )
+    except ConversionError as e:
+        # ConversionError is written to be safe to surface: it never carries
+        # LibreOffice output, which can echo document text.
+        app.logger.error(f"docx->pdf conversion failed: {e}")
+        return jsonify({"error": str(e)}), 502
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        app.logger.error(f"Document generation error: {e}")
+        return jsonify({"error": "Failed to generate document"}), 500
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
 # Forms with an editable Word (.docx) build — operator directive 2026-07-27:
 # the attorney downloads forms in WORD from the matter rail. Phase-1 forms
 # first; the map grows form by form as each docx build is proven. The PDF
@@ -253,10 +293,12 @@ def generate_form(state, form_name):
     data = get_request_data()
 
     fmt = (request.args.get('format') or 'pdf').strip().lower()
-    if fmt not in ('pdf', 'docx'):
+    if fmt not in ('pdf', 'docx', 'pdf-from-docx'):
         return jsonify({"error": f"Unsupported format '{fmt}'"}), 400
-    if fmt == 'docx' and form_name not in DOCX_FORMS.get(state, {}):
+    if fmt in ('docx', 'pdf-from-docx') and form_name not in DOCX_FORMS.get(state, {}):
         return jsonify({"error": f"No Word build for '{state}/{form_name}' yet — request PDF"}), 400
+    if fmt == 'pdf-from-docx' and not libreoffice_available():
+        return jsonify({"error": "PDF-from-Word conversion is unavailable on this deployment"}), 503
 
     try:
         # Get plaintiff or defendant name for filename (sanitized)
@@ -270,6 +312,18 @@ def generate_form(state, form_name):
             generator = getattr(module, DOCX_FORMS[state][form_name])
             filename = f"{state.upper()}_{form_name.upper()}_{name}.docx"
             return generate_file_response(generator, data, filename, suffix='.docx', mimetype=DOCX_MIME)
+
+        # format=pdf-from-docx: build the Word document and convert it, so the
+        # PDF the court receives is the SAME artifact the attorney edited. The
+        # drafted documents (complaint, stipulation) are moving to docx-first
+        # because AI-written clauses are variable-length and ReportLab draws at
+        # fixed coordinates; see docx_pdf.py.
+        if fmt == 'pdf-from-docx':
+            state_module = STATE_CONFIGS[state].get('module', state)
+            module = import_module(f'states.{state_module}.docx_forms')
+            generator = getattr(module, DOCX_FORMS[state][form_name])
+            filename = f"{state.upper()}_{form_name.upper()}_{name}.pdf"
+            return generate_converted_pdf_response(generator, data, filename)
 
         generator = get_generator(state, form_name)
         filename = f"{state.upper()}_{form_name.upper()}_{name}.pdf"

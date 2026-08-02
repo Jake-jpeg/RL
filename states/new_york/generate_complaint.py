@@ -50,7 +50,15 @@ MARGIN_TOP = 72
 MARGIN_BOTTOM = 72
 CONTENT_WIDTH = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT   # 468
 
-BODY_LEADING = 20            # pleading-style spacing for allegations
+# 22 NYCRR 202.5(a)(1): papers must be "at least double space between each
+# line, except for quotations and the names and addresses of attorneys."
+# Body text is 12pt Times, so double spacing is 24pt of leading. The old
+# value of 20 was 1.67x — pleading-ish, and non-conforming.
+BODY_LEADING = 24            # DOUBLE-SPACED allegations (12pt x 2)
+# The rule's own exceptions: captions carry the names and addresses of
+# attorneys, and the signature/notice blocks are not body lines. These stay
+# single-spaced, which is what the exception is for and what every filed
+# pleading looks like.
 TIGHT_LEADING = 14           # captions, signature blocks, notices
 PARA_GAP = 8                 # extra gap between allegations
 
