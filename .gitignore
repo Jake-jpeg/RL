@@ -1,32 +1,4 @@
-# Python
+.pytest_cache/
+pytest-of-*/
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
-venv/
-.venv/
-*.egg-info/
-dist/
-build/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Environment
-.env
-.env.local
-
-# Logs
-*.log
-
-# Test PDFs
-*.pdf
+*.pyc

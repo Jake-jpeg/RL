@@ -22,8 +22,6 @@ divorcegpt-pdf/
 │   │   ├── generate_ud12.py # Part 130 Certification
 │   │   ├── generate_ud14.py # Notice of Entry (Phase 3)
 │   │   └── generate_ud15.py # Affidavit of Service (Phase 3)
-│   └── nevada/              # Coming soon
-│       └── ...
 └── README.md
 ```
 
@@ -51,9 +49,6 @@ POST /generate/ny/ud6
 
 # New York Phase 2 Package
 POST /generate/ny/phase2-package
-
-# Nevada (future)
-POST /generate/nv/complaint
 ```
 
 ### Legacy Routes (Backward Compatible)
@@ -84,9 +79,7 @@ path is `states.new_york.generate_ud6`.
 
 ## Supported States
 
-- **ny** (New York) - Full uncontested divorce packet (11 forms)
-- **nv** (Nevada) - Coming soon
-- **ca** (California) - Planned
+- **ny** (New York) - Full uncontested divorce packet
 
 ## Adding a New State
 

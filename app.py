@@ -11,20 +11,29 @@ Endpoints:
 - POST /generate/{state}/package - Generate form packages
 - GET  /health - Health check
 
-States supported: ny (New York), nv (Nevada - coming soon)
+States supported: ny (New York)
 """
 
 import os
 import io
+import hmac
+import time
 import tempfile
 import zipfile
-from flask import Flask, request, jsonify, send_file
+from collections import defaultdict, deque
+from flask import Flask, request, jsonify, send_file, abort
 from flask_cors import CORS
 from importlib import import_module
 
 app = Flask(__name__)
 
-# CORS - allow requests from your frontend
+# Bound request bodies (form payloads are small structured JSON).
+app.config["MAX_CONTENT_LENGTH"] = int(os.environ.get("MAX_REQUEST_BYTES", str(256 * 1024)))
+
+# CORS - allow requests from your frontend.
+# NOTE: CORS is a browser courtesy, NOT authentication. Every /generate
+# route additionally requires the server-to-server bearer token below;
+# the intended caller is the DivorceGPT backend, never a browser.
 CORS(app, origins=[
     "http://localhost:3000",
     "https://squid-app-zsiqz.ondigitalocean.app",
@@ -36,131 +45,91 @@ CORS(app, origins=[
 import re
 
 # =====================================================================
-# ADDRESS PARSING UTILITY
+# SERVER-TO-SERVER AUTHENTICATION (PDF_SERVICE_TOKEN)
 # =====================================================================
-# DivorceGPT AI collects a single combined address like:
-#   "2030 Hudson Street, Fort Lee, NJ 07024"
-# ReportLab generators expect split fields:
-#   plaintiffAddress = "2030 Hudson Street"
-#   plaintiffCityStateZip = "Fort Lee, NJ 07024"
-#   plaintiffFullCityState = "Fort Lee, New Jersey"
-# This utility parses the combined address into the split format.
+# Every generation/package endpoint requires:
+#   Authorization: Bearer <PDF_SERVICE_TOKEN>
+# - constant-time comparison (hmac.compare_digest);
+# - missing/invalid token => 401 with an identical, information-free body
+#   (never reveals whether a token was close, malformed, or absent);
+# - the token is never logged and never echoed in errors;
+# - /health stays open but confidential-detail-free.
+# If PDF_SERVICE_TOKEN is unset the service refuses generation entirely
+# (fail closed) rather than running open.
 
-STATE_ABBREVS = {
-    'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas', 'CA': 'California',
-    'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware', 'FL': 'Florida', 'GA': 'Georgia',
-    'HI': 'Hawaii', 'ID': 'Idaho', 'IL': 'Illinois', 'IN': 'Indiana', 'IA': 'Iowa',
-    'KS': 'Kansas', 'KY': 'Kentucky', 'LA': 'Louisiana', 'ME': 'Maine', 'MD': 'Maryland',
-    'MA': 'Massachusetts', 'MI': 'Michigan', 'MN': 'Minnesota', 'MS': 'Mississippi', 'MO': 'Missouri',
-    'MT': 'Montana', 'NE': 'Nebraska', 'NV': 'Nevada', 'NH': 'New Hampshire', 'NJ': 'New Jersey',
-    'NM': 'New Mexico', 'NY': 'New York', 'NC': 'North Carolina', 'ND': 'North Dakota', 'OH': 'Ohio',
-    'OK': 'Oklahoma', 'OR': 'Oregon', 'PA': 'Pennsylvania', 'RI': 'Rhode Island', 'SC': 'South Carolina',
-    'SD': 'South Dakota', 'TN': 'Tennessee', 'TX': 'Texas', 'UT': 'Utah', 'VT': 'Vermont',
-    'VA': 'Virginia', 'WA': 'Washington', 'WV': 'West Virginia', 'WI': 'Wisconsin', 'WY': 'Wyoming',
-    'DC': 'District of Columbia',
-}
-
-def parse_address(full_address):
-    """
-    Parse a combined address into street, city/state/zip, and full city/state.
-    Input:  "2030 Hudson Street, Fort Lee, NJ 07024"
-    Output: ("2030 Hudson Street", "Fort Lee, NJ 07024", "Fort Lee, New Jersey")
-    """
-    if not full_address:
-        return ('', '', '')
-    
-    # Try to match: street, city, STATE ZIP
-    match = re.match(
-        r'^(.+?),\s*(.+?),\s*([A-Z]{2})\s+(\d{5}(?:-\d{4})?)$',
-        full_address.strip()
-    )
-    if match:
-        street = match.group(1).strip()
-        city = match.group(2).strip()
-        state_abbr = match.group(3).strip()
-        zipcode = match.group(4).strip()
-        state_full = STATE_ABBREVS.get(state_abbr, state_abbr)
-        city_state_zip = f"{city}, {state_abbr} {zipcode}"
-        full_city_state = f"{city}, {state_full}"
-        return (street, city_state_zip, full_city_state)
-    
-    # Fallback: try splitting by last comma
-    parts = full_address.rsplit(',', 1)
-    if len(parts) == 2:
-        street_and_city = parts[0].strip()
-        state_zip = parts[1].strip()
-        # Try to split street from city
-        street_parts = street_and_city.rsplit(',', 1)
-        if len(street_parts) == 2:
-            return (street_parts[0].strip(), f"{street_parts[1].strip()}, {state_zip}", street_parts[1].strip())
-    
-    # Last resort: return as-is for street, empty for others
-    return (full_address, '', '')
+_RATE_BUCKETS = defaultdict(deque)  # ip -> recent request timestamps
+RATE_LIMIT_MAX = int(os.environ.get("RATE_LIMIT_MAX", "30"))
+RATE_LIMIT_WINDOW_S = int(os.environ.get("RATE_LIMIT_WINDOW_S", "60"))
 
 
-def preprocess_nj_data(data):
-    """
-    Preprocess data from DivorceGPT AI into the format NJ ReportLab generators expect.
-    Parses combined addresses, derives ceremony location, etc.
-    """
-    processed = dict(data)  # copy
-    
-    # Parse plaintiff address
-    p_addr = data.get('plaintiffAddress', '')
-    if p_addr and not data.get('plaintiffCityStateZip'):
-        street, city_state_zip, full_city_state = parse_address(p_addr)
-        processed['plaintiffAddress'] = street
-        processed['plaintiffCityStateZip'] = city_state_zip
-        processed['plaintiffFullCityState'] = full_city_state
-    
-    # Parse defendant address
-    d_addr = data.get('defendantAddress', '')
-    if d_addr and not data.get('defendantCityStateZip'):
-        street, city_state_zip, full_city_state = parse_address(d_addr)
-        processed['defendantAddress'] = street
-        processed['defendantCityStateZip'] = city_state_zip
-        processed['defendantFullCityState'] = full_city_state
-    
-    # Derive ceremony location from marriageCity + marriageState
-    if not data.get('ceremonyLocation'):
-        city = data.get('marriageCity', '').strip()
-        state = data.get('marriageState', '').strip()
-        if city and state:
-            # Construct "the Borough of Fort Lee, State of New Jersey"
-            processed['ceremonyLocation'] = f"the Borough of {city}, State of {state}"
-    
-    return processed
+def _client_ip():
+    fwd = request.headers.get("X-Forwarded-For", "")
+    return (fwd.split(",")[0].strip() if fwd else request.remote_addr) or "unknown"
 
 
-# Display-friendly filenames for ZIP packages
-NV_FORM_DISPLAY_NAMES = {
-    'coversheet': 'FAMILY_COURT_COVER_SHEET',
-    'joint-petition': 'JOINT_PETITION_FOR_DIVORCE',
-    'decree': 'DECREE_OF_DIVORCE',
-    'affidavit': 'AFFIDAVIT_OF_RESIDENT_WITNESS',
-    'request-submission': 'REQUEST_FOR_SUBMISSION_AND_INDEX_OF_EXHIBITS',
-    'exhibit-cover': 'EXHIBIT_COVER_PAGE',
-}
+def _unauthorized():
+    resp = jsonify({"error": "Unauthorized"})
+    resp.status_code = 401
+    resp.headers["WWW-Authenticate"] = "Bearer"
+    return resp
 
-NJ_FORM_DISPLAY_NAMES = {
-    'complaint': 'COMPLAINT',
-    'verification': 'VERIFICATION',
-    'cdr-plaintiff': 'CDR-PLAINTIFF',
-    'cdr-defendant': 'CDR-DEFENDANT',
-    'insurance': 'INSURANCE',
-    'summons': 'SUMMONS',
-    'acknowledgment': 'ACKNOWLEDGMENT_OF_SERVICE',
-    'jod-cert-plaintiff': 'CN12620-PLAINTIFF',
-    'jod-cert-defendant': 'CN12620-DEFENDANT',
-    'jod': 'FINAL_JUDGMENT_OF_DIVORCE',
-}
+
+@app.before_request
+def _guard_generate_routes():
+    """Auth + rate limit for every /generate path (incl. legacy routes)."""
+    if not request.path.startswith("/generate"):
+        return None
+    if request.method == "OPTIONS":  # CORS preflight carries no credentials
+        return None
+
+    expected = os.environ.get("PDF_SERVICE_TOKEN", "")
+    if not expected:
+        # Fail closed: an unconfigured service must not generate documents.
+        return jsonify({"error": "Service not configured"}), 503
+
+    header = request.headers.get("Authorization", "")
+    supplied = header[7:] if header.startswith("Bearer ") else ""
+    if not supplied or not hmac.compare_digest(
+        supplied.encode("utf-8"), expected.encode("utf-8")
+    ):
+        return _unauthorized()
+
+    # Simple fixed-window rate limit per source (single-instance staging).
+    now = time.monotonic()
+    bucket = _RATE_BUCKETS[_client_ip()]
+    while bucket and now - bucket[0] > RATE_LIMIT_WINDOW_S:
+        bucket.popleft()
+    if len(bucket) >= RATE_LIMIT_MAX:
+        return jsonify({"error": "Too many requests"}), 429
+    bucket.append(now)
+    return None
+
+
+def sanitize_name_component(value, fallback="Document"):
+    """Filenames derive only from [A-Za-z0-9_-]; everything else is dropped."""
+    cleaned = re.sub(r"[^A-Za-z0-9_-]+", "_", str(value or "")).strip("_")
+    return cleaned[:60] or fallback
+
+
+def get_request_data():
+    """Parse the JSON body; malformed or non-object JSON => 400, never 500."""
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        abort(400, description="Request body must be a JSON object")
+    return data
+
+
+@app.errorhandler(400)
+def _bad_request(e):
+    return jsonify({"error": getattr(e, "description", "Bad request")}), 400
+
+
+@app.errorhandler(413)
+def _too_large(e):
+    return jsonify({"error": "Request body too large"}), 413
 
 def get_zip_filename(state, form_name):
     """Get display-friendly filename for a form in a ZIP package."""
-    if state == 'nv' and form_name in NV_FORM_DISPLAY_NAMES:
-        return f"{NV_FORM_DISPLAY_NAMES[form_name]}.pdf"
-    if state == 'nj' and form_name in NJ_FORM_DISPLAY_NAMES:
-        return f"{NJ_FORM_DISPLAY_NAMES[form_name]}.pdf"
     return f"{form_name.upper()}.pdf"
 
 
@@ -170,6 +139,8 @@ STATE_CONFIGS = {
         'name': 'New York',
         'module': 'new_york',
         'forms': {
+            'complaint': 'generate_complaint',
+            'stipulation': 'generate_stipulation',
             'ud1': 'generate_ud1',
             'ud4': 'generate_ud4',
             'ud5': 'generate_ud5',
@@ -186,38 +157,6 @@ STATE_CONFIGS = {
         'phase2': ['ud5', 'ud6', 'ud7', 'ud9', 'ud10', 'ud11', 'ud12'],
         'phase3': ['ud14', 'ud15'],
     },
-    'nv': {
-        'name': 'Nevada',
-        'module': 'nevada',
-        'forms': {
-            'joint-petition': 'generate_nv_joint_petition',
-            'decree': 'generate_nv_decree',
-            'affidavit': 'generate_nv_affidavit',
-            'coversheet': 'generate_nv_coversheet',
-            'request-submission': 'generate_nv_request_submission',
-            'exhibit-cover': 'generate_nv_exhibit_cover',
-        },
-        'phase1': ['coversheet', 'joint-petition', 'decree', 'affidavit'],
-        'phase1_washoe': ['coversheet', 'joint-petition', 'decree', 'affidavit', 'request-submission', 'exhibit-cover'],
-    },
-    'nj': {
-        'name': 'New Jersey',
-        'module': 'new_jersey',
-        'forms': {
-            'verification': 'generate_nj_verification',
-            'complaint': 'generate_nj_complaint',
-            'cdr-plaintiff': 'generate_nj_cdr_plaintiff',
-            'cdr-defendant': 'generate_nj_cdr_defendant',
-            'insurance': 'generate_nj_insurance',
-            'jod-cert-plaintiff': 'generate_nj_jod_cert_plaintiff',
-            'jod-cert-defendant': 'generate_nj_jod_cert_defendant',
-            'acknowledgment': 'generate_nj_acknowledgment',
-            'jod': 'generate_nj_jod',
-            'summons': 'generate_nj_summons',
-        },
-        'phase1': ['complaint', 'verification', 'cdr-plaintiff', 'cdr-defendant', 'insurance', 'summons'],
-        'phase2': ['complaint', 'verification', 'cdr-plaintiff', 'cdr-defendant', 'insurance', 'summons', 'acknowledgment', 'jod-cert-plaintiff', 'jod-cert-defendant', 'jod'],
-    },
 }
 
 
@@ -227,7 +166,9 @@ def health_check():
     return jsonify({
         "status": "healthy",
         "service": "divorcegpt-pdf-multistate",
-        "states": list(STATE_CONFIGS.keys())
+        "states": list(STATE_CONFIGS.keys()),
+        "auth_required": bool(os.environ.get("PDF_SERVICE_TOKEN")),
+        "app_stage": os.environ.get("APP_STAGE", ""),
     })
 
 
@@ -255,55 +196,83 @@ def get_generator(state, form_name):
         raise ValueError(f"Form generator not available: {form_name}")
 
 
-def generate_pdf_response(generator_func, data, filename):
-    """Helper to generate PDF and return as response."""
+def generate_file_response(generator_func, data, filename, suffix='.pdf', mimetype='application/pdf'):
+    """Generate with a temp file and return as a download response."""
     try:
         # Create temp file
-        with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
             tmp_path = tmp.name
-        
-        # Generate PDF
-        generator_func(data, tmp_path)
-        
-        # Read and return
-        with open(tmp_path, 'rb') as f:
-            pdf_bytes = f.read()
-        
-        # Cleanup
-        os.unlink(tmp_path)
-        
+
+        try:
+            generator_func(data, tmp_path)
+            with open(tmp_path, 'rb') as f:
+                file_bytes = f.read()
+        finally:
+            # Cleanup even when a generator raises (no orphaned temp files).
+            if os.path.exists(tmp_path):
+                os.unlink(tmp_path)
+
         return send_file(
-            io.BytesIO(pdf_bytes),
-            mimetype='application/pdf',
+            io.BytesIO(file_bytes),
+            mimetype=mimetype,
             as_attachment=True,
             download_name=filename
         )
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
-        app.logger.error(f"PDF generation error: {e}")
-        return jsonify({"error": "Failed to generate PDF"}), 500
+        app.logger.error(f"Document generation error: {e}")
+        return jsonify({"error": "Failed to generate document"}), 500
+
+
+def generate_pdf_response(generator_func, data, filename):
+    """Helper to generate PDF and return as response."""
+    return generate_file_response(generator_func, data, filename)
+
+
+# Forms with an editable Word (.docx) build — operator directive 2026-07-27:
+# the attorney downloads forms in WORD from the matter rail. Phase-1 forms
+# first; the map grows form by form as each docx build is proven. The PDF
+# path exists for every form regardless.
+DOCX_FORMS = {
+    'ny': {
+        'complaint': 'generate_complaint_docx',
+        'ud1': 'generate_ud1_docx',
+    },
+}
+DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
 
 
 @app.route('/generate/<state>/<form_name>', methods=['POST'])
 def generate_form(state, form_name):
     """Generate a specific form for a state."""
-    data = request.get_json()
-    
-    # Preprocess NJ addresses and derived fields
-    if state == "nj":
-        data = preprocess_nj_data(data)
-    
+    if state not in STATE_CONFIGS:
+        return jsonify({"error": f"Unsupported state: {state}"}), 400
+    if form_name not in STATE_CONFIGS[state]['forms']:
+        return jsonify({"error": f"Unknown form '{form_name}' for state '{state}'"}), 400
+    data = get_request_data()
+
+    fmt = (request.args.get('format') or 'pdf').strip().lower()
+    if fmt not in ('pdf', 'docx'):
+        return jsonify({"error": f"Unsupported format '{fmt}'"}), 400
+    if fmt == 'docx' and form_name not in DOCX_FORMS.get(state, {}):
+        return jsonify({"error": f"No Word build for '{state}/{form_name}' yet — request PDF"}), 400
+
     try:
-        generator = get_generator(state, form_name)
-        
-        # Get plaintiff or defendant name for filename
-        plaintiff = data.get('plaintiffName', 'Document').replace(' ', '_')
-        defendant = data.get('defendantName', 'Document').replace(' ', '_')
+        # Get plaintiff or defendant name for filename (sanitized)
+        plaintiff = sanitize_name_component(data.get('plaintiffName', ''), 'Document')
+        defendant = sanitize_name_component(data.get('defendantName', ''), 'Document')
         name = plaintiff if plaintiff != 'Document' else defendant
-        
+
+        if fmt == 'docx':
+            state_module = STATE_CONFIGS[state].get('module', state)
+            module = import_module(f'states.{state_module}.docx_forms')
+            generator = getattr(module, DOCX_FORMS[state][form_name])
+            filename = f"{state.upper()}_{form_name.upper()}_{name}.docx"
+            return generate_file_response(generator, data, filename, suffix='.docx', mimetype=DOCX_MIME)
+
+        generator = get_generator(state, form_name)
         filename = f"{state.upper()}_{form_name.upper()}_{name}.pdf"
-        
         return generate_pdf_response(generator, data, filename)
         
     except ValueError as e:
@@ -322,43 +291,33 @@ def generate_phase1_package(state):
     if 'phase1' not in STATE_CONFIGS[state]:
         return jsonify({"error": f"Phase 1 not available for state: {state}"}), 400
     
-    data = request.get_json()
-    
-    # Preprocess NJ addresses and derived fields
-    if state == "nj":
-        data = preprocess_nj_data(data)
+    data = get_request_data()
     
     try:
         zip_buffer = io.BytesIO()
         
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
-            # NV: Washoe County requires 6 forms (adds Request for Submission + Exhibit Cover)
-            if state == 'nv' and data.get('county', '').strip().lower() == 'washoe':
-                form_list = STATE_CONFIGS[state]['phase1_washoe'].copy()
-            else:
-                form_list = STATE_CONFIGS[state]['phase1'].copy()
+            form_list = STATE_CONFIGS[state]['phase1'].copy()
             
             for form_name in form_list:
                 generator = get_generator(state, form_name)
                 
                 with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
                     tmp_path = tmp.name
-                
-                generator(data, tmp_path)
-                
-                filename = get_zip_filename(state, form_name)
-                with open(tmp_path, 'rb') as f:
-                    zf.writestr(filename, f.read())
-                
-                os.unlink(tmp_path)
+
+                try:
+                    generator(data, tmp_path)
+
+                    filename = get_zip_filename(state, form_name)
+                    with open(tmp_path, 'rb') as f:
+                        zf.writestr(filename, f.read())
+                finally:
+                    if os.path.exists(tmp_path):
+                        os.unlink(tmp_path)
         
         zip_buffer.seek(0)
         
-        # NV uses firstSpouseName (Joint Petitioner), not plaintiffName
-        if state == 'nv':
-            filer = data.get('firstSpouseName', 'DivorceGPT').replace(' ', '_')
-        else:
-            filer = data.get('plaintiffName', 'DivorceGPT').replace(' ', '_')
+        filer = sanitize_name_component(data.get('plaintiffName', ''), 'DivorceGPT')
         return send_file(
             zip_buffer,
             mimetype='application/zip',
@@ -382,11 +341,7 @@ def generate_phase2_package(state):
     if 'phase2' not in STATE_CONFIGS[state]:
         return jsonify({"error": f"Phase 2 not available for state: {state}"}), 400
     
-    data = request.get_json()
-    
-    # Preprocess NJ addresses and derived fields
-    if state == "nj":
-        data = preprocess_nj_data(data)
+    data = get_request_data()
     
     try:
         zip_buffer = io.BytesIO()
@@ -403,18 +358,20 @@ def generate_phase2_package(state):
                 
                 with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
                     tmp_path = tmp.name
-                
-                generator(data, tmp_path)
-                
-                filename = get_zip_filename(state, form_name)
-                with open(tmp_path, 'rb') as f:
-                    zf.writestr(filename, f.read())
-                
-                os.unlink(tmp_path)
+
+                try:
+                    generator(data, tmp_path)
+
+                    filename = get_zip_filename(state, form_name)
+                    with open(tmp_path, 'rb') as f:
+                        zf.writestr(filename, f.read())
+                finally:
+                    if os.path.exists(tmp_path):
+                        os.unlink(tmp_path)
         
         zip_buffer.seek(0)
         
-        plaintiff = data.get('plaintiffName', 'DivorceGPT').replace(' ', '_')
+        plaintiff = sanitize_name_component(data.get('plaintiffName', ''), 'DivorceGPT')
         return send_file(
             zip_buffer,
             mimetype='application/zip',
@@ -438,11 +395,7 @@ def generate_phase3_package(state):
     if 'phase3' not in STATE_CONFIGS[state]:
         return jsonify({"error": f"Phase 3 not available for state: {state}"}), 400
     
-    data = request.get_json()
-    
-    # Preprocess NJ addresses and derived fields
-    if state == "nj":
-        data = preprocess_nj_data(data)
+    data = get_request_data()
     
     try:
         zip_buffer = io.BytesIO()
@@ -453,18 +406,20 @@ def generate_phase3_package(state):
                 
                 with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
                     tmp_path = tmp.name
-                
-                generator(data, tmp_path)
-                
-                filename = get_zip_filename(state, form_name)
-                with open(tmp_path, 'rb') as f:
-                    zf.writestr(filename, f.read())
-                
-                os.unlink(tmp_path)
+
+                try:
+                    generator(data, tmp_path)
+
+                    filename = get_zip_filename(state, form_name)
+                    with open(tmp_path, 'rb') as f:
+                        zf.writestr(filename, f.read())
+                finally:
+                    if os.path.exists(tmp_path):
+                        os.unlink(tmp_path)
         
         zip_buffer.seek(0)
         
-        plaintiff = data.get('plaintiffName', 'DivorceGPT').replace(' ', '_')
+        plaintiff = sanitize_name_component(data.get('plaintiffName', ''), 'DivorceGPT')
         return send_file(
             zip_buffer,
             mimetype='application/zip',
