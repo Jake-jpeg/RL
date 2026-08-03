@@ -9,6 +9,8 @@ Grounds: DRL §170(7) - irretrievable breakdown for 6+ months.
 """
 
 from reportlab.lib.pagesizes import letter
+
+from .children import findings_clause
 from reportlab.pdfgen import canvas
 
 # Page dimensions
@@ -352,8 +354,8 @@ def generate_ud10(data, output_path):
     
     y = check_page_break(c, y, LINE_HEIGHT * 3)
     
-    # NINTH - No children
-    ninth_text = "There are no children of the marriage."
+    # NINTH - Children of the marriage, read from the payload.
+    ninth_text = findings_clause(data)
     y = draw_paragraph(c, "NINTH:", ninth_text, MARGIN_LEFT, y)
     y -= LINE_HEIGHT * 0.5
     

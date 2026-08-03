@@ -39,6 +39,8 @@ Optional:
 """
 
 from reportlab.lib.pagesizes import letter
+
+from .children import child_count, complaint_clause
 from reportlab.pdfgen import canvas
 from datetime import datetime
 import re
@@ -325,24 +327,17 @@ def drl253_clause(ceremony_type):
 
 
 def children_clause(count, detail=""):
-    """DRL para FIFTH. The pleading recites each child's name and date of
-    birth -- that is exactly what the intake collects and the only child
-    information that belongs on the complaint."""
-    if not count or int(count) == 0:
-        return "There are no unemancipated children of this marriage."
-    n = int(count)
-    word = "is one unemancipated child" if n == 1 else f"are {n} unemancipated children"
-    detail = (detail or "").strip()
-    if detail:
-        return (
-            f"There {word} of this marriage, namely: {detail}. [ATTORNEY REVIEW "
-            f"REQUIRED -- child-related relief must be completed by counsel.]"
-        )
-    return (
-        f"There {word} of this marriage. [ATTORNEY REVIEW REQUIRED -- name and "
-        f"date of birth of each child must be supplied, and child-related relief "
-        f"completed, by counsel.]"
-    )
+    """DEPRECATED SHIM — the real implementation lives in children.py.
+
+    Kept so any external caller passing (count, detail) still works, but the
+    generator itself now routes through the shared module. Having the
+    complaint carry its own copy of this logic is exactly how it ended up
+    naming a child while UD-6, UD-7, UD-10 and UD-11 swore there were none.
+    """
+    return complaint_clause({
+        "unemancipatedChildren": count or 0,
+        "childrenDetail": detail or "",
+    })
 
 
 # ────────────────────────── generator ──────────────────────────
@@ -363,7 +358,7 @@ def generate_complaint(data, output_path):
 
     resident_party = (data.get("residentParty") or "plaintiff").strip().lower()
     ceremony_type = (data.get("ceremonyType") or "civil").strip().lower()
-    children = data.get("unemancipatedChildren", 0)
+    children = child_count(data)
 
     attorney_name = data.get("attorneyName", DEFAULT_ATTORNEY_NAME)
     attorney_firm = data.get("attorneyFirm", DEFAULT_ATTORNEY_FIRM)
@@ -393,7 +388,7 @@ def generate_complaint(data, output_path):
         "Both parties are over the age of eighteen (18) years as of the date set forth herein.",
         marriage_clause(data.get("marriageDate"), data.get("marriagePlace"), ceremony_type),
         drl253_clause(ceremony_type),
-        children_clause(children, data.get("childrenDetail", "")),
+        complaint_clause(data),
         f"The Plaintiff resides at {plaintiff_addr}. The Defendant resides at "
         f"{defendant_addr}.",
         "This marriage has never been altered or dissolved by any judgment of divorce, "

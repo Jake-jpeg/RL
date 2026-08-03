@@ -11,6 +11,8 @@ This is the court's official judgment - prepared by plaintiff, signed by judge.
 """
 
 from reportlab.lib.pagesizes import letter
+
+from .children import judgment_clause
 from reportlab.pdfgen import canvas
 
 # Page dimensions
@@ -294,8 +296,9 @@ def generate_ud11(data, output_path):
     
     y = check_page_break(c, y, DOUBLE_SPACE * 3)
     
-    # ORDERED AND ADJUDGED - No children
-    y = draw_bold_prefix_text(c, "ORDERED AND ADJUDGED,", "that there are no children of the marriage; and it is further", MARGIN_LEFT, y, CONTENT_WIDTH)
+    # ORDERED AND ADJUDGED - Children, read from the payload. This is the
+    # clause a JUDGE SIGNS; it asserted "no children" unconditionally.
+    y = draw_bold_prefix_text(c, "ORDERED AND ADJUDGED,", judgment_clause(data), MARGIN_LEFT, y, CONTENT_WIDTH)
     
     y = check_page_break(c, y, DOUBLE_SPACE * 3)
     

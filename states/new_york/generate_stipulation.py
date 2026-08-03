@@ -35,6 +35,8 @@ Data keys (strings; deterministic mapping from saved answers — no AI output):
 """
 
 from reportlab.lib.pagesizes import letter
+
+from .children import stipulation_recital
 from reportlab.pdfgen import canvas
 from datetime import datetime
 import re
@@ -218,7 +220,7 @@ def generate_stipulation(data, output_path):
     d.heading(ROMAN[0], "RECITALS")
     recitals = [
         f"The parties were married on {marriage_date}, in {marriage_place}.",
-        "There are no unemancipated children of the marriage, and none are expected.",
+        stipulation_recital(data),
         "The relationship between the parties has broken down irretrievably for a "
         "period of at least six months (Domestic Relations Law § 170(7)), and an "
         "action for divorce is pending or about to be commenced in the Supreme "

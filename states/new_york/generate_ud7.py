@@ -8,6 +8,8 @@ Simplified for DivorceGPT scope: no children, no assets, no maintenance.
 """
 
 from reportlab.lib.pagesizes import letter
+
+from .children import affidavit_clause
 from reportlab.pdfgen import canvas
 
 # Page dimensions
@@ -218,8 +220,8 @@ def generate_ud7(data, output_path):
         y = draw_wrapped_text(c, para6, MARGIN_LEFT, y, CONTENT_WIDTH)
     y -= LINE_HEIGHT * 1.5
     
-    # 7. No children
-    para7 = "7. There are no children of the marriage under the age of 21."
+    # 7. Children of the marriage — READ FROM THE PAYLOAD. UD-7 is SWORN.
+    para7 = affidavit_clause(data, "7.")
     y = draw_wrapped_text(c, para7, MARGIN_LEFT, y, CONTENT_WIDTH)
     y -= LINE_HEIGHT * 1.5
     

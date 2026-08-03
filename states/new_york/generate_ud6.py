@@ -9,6 +9,8 @@ Grounds: DRL §170(7) - irretrievable breakdown for 6+ months.
 """
 
 from reportlab.lib.pagesizes import letter
+
+from .children import affidavit_clause, ud6_economic_clause
 from reportlab.pdfgen import canvas
 
 # Page dimensions
@@ -233,8 +235,9 @@ def generate_ud6(data, output_path):
         c.drawString(MARGIN_LEFT, y, "The marriage was NOT performed in a religious ceremony.")
     y -= LINE_HEIGHT * 1.5
     
-    # 4. No children
-    para4 = "4. There are no children of the marriage under the age of 21."
+    # 4. Children of the marriage — READ FROM THE PAYLOAD (see children.py).
+    #    This asserted "no children" unconditionally; UD-6 is SWORN.
+    para4 = affidavit_clause(data, "4.")
     y = draw_wrapped_text(c, para4, MARGIN_LEFT, y, CONTENT_WIDTH)
     y -= LINE_HEIGHT * 1.5
     
@@ -264,7 +267,7 @@ def generate_ud6(data, output_path):
     y = draw_wrapped_text(c, para6b, MARGIN_LEFT, y, CONTENT_WIDTH)
     y -= LINE_HEIGHT
     
-    para6c = "6c. Since the grounds alleged are DRL §170(7), all economic issues of equitable distribution of marital property, the payment or waiver of spousal support have been resolved by the parties and there are no children of the marriage."
+    para6c = ud6_economic_clause(data)
     y = draw_wrapped_text(c, para6c, MARGIN_LEFT, y, CONTENT_WIDTH)
     y -= LINE_HEIGHT * 1.5
     
