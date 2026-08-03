@@ -12,7 +12,7 @@ This is the court's official judgment - prepared by plaintiff, signed by judge.
 
 from reportlab.lib.pagesizes import letter
 
-from .children import judgment_clause
+from .children import judgment_clause, ud11_child_decrees
 from reportlab.pdfgen import canvas
 
 # Page dimensions
@@ -299,9 +299,22 @@ def generate_ud11(data, output_path):
     # ORDERED AND ADJUDGED - Children, read from the payload. This is the
     # clause a JUDGE SIGNS; it asserted "no children" unconditionally.
     y = draw_bold_prefix_text(c, "ORDERED AND ADJUDGED,", judgment_clause(data), MARGIN_LEFT, y, CONTENT_WIDTH)
-    
+
+    # The child relief that has to follow that recital: custody, visitation,
+    # continuation of existing orders, child support, the DRL 240(1-b)
+    # adjustment on termination of maintenance, child care, health care and
+    # insurance, education and extraordinary expenses, and the QMCSO. Substance
+    # and structure from UD-11 (rev. 3/1/26). EMPTY when there are no children,
+    # so a childless judgment is unchanged.
+    for decree in ud11_child_decrees(data):
+        y = check_page_break(c, y, DOUBLE_SPACE * 3)
+        y = draw_bold_prefix_text(
+            c, "ORDERED AND ADJUDGED,", decree + "; and it is further",
+            MARGIN_LEFT, y, CONTENT_WIDTH,
+        )
+
     y = check_page_break(c, y, DOUBLE_SPACE * 3)
-    
+
     # ORDERED AND ADJUDGED - No maintenance
     y = draw_bold_prefix_text(c, "ORDERED AND ADJUDGED,", "that no award of maintenance is made to either party, neither party having requested maintenance; and it is further", MARGIN_LEFT, y, CONTENT_WIDTH)
     

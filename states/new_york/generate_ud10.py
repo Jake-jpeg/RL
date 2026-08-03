@@ -10,7 +10,7 @@ Grounds: DRL §170(7) - irretrievable breakdown for 6+ months.
 
 from reportlab.lib.pagesizes import letter
 
-from .children import findings_clause
+from .children import findings_clause, ud10_child_findings
 from reportlab.pdfgen import canvas
 
 # Page dimensions
@@ -402,8 +402,21 @@ def generate_ud10(data, output_path):
     # FIFTEENTH - DRL 255 compliance
     fifteenth_text = "Compliance with DRL §255(1) and (2) has been satisfied. Each party has been provided notice as required by DRL §255(1)."
     y = draw_paragraph(c, "FIFTEENTH:", fifteenth_text, MARGIN_LEFT, y)
-    y -= LINE_HEIGHT * 1.5
-    
+    y -= LINE_HEIGHT * 0.5
+
+    # SIXTEENTH onward - custody and visitation, child support, and the
+    # children's health insurance. APPENDED rather than inserted beside NINTH
+    # so that no existing paragraph's ordinal moves, and EMPTY on a childless
+    # matter so that document renders exactly as it always has. Substance and
+    # structure come from UD-10 (rev. 3/1/26) paragraphs ELEVENTH, THIRTEENTH
+    # and FOURTEENTH; see the CHILD RELIEF section of children.py.
+    for label, text in ud10_child_findings(data):
+        y = check_page_break(c, y, LINE_HEIGHT * 5)
+        y = draw_paragraph(c, label, text, MARGIN_LEFT, y)
+        y -= LINE_HEIGHT * 0.5
+
+    y -= LINE_HEIGHT
+
     # Force new page for CONCLUSIONS OF LAW
     c.showPage()
     c.setFont("Times-Roman", 12)
