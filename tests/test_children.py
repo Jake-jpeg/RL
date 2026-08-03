@@ -79,16 +79,43 @@ DENIAL = re.compile(r"no (unemancipated )?child(ren)? of (the|this) marriage", r
 
 
 def render_text(fn, data, name):
-    """Render to PDF and extract the text — the level the bug lived at."""
+    """Render to PDF and extract the text — the level the bug lived at.
+
+    ENCODING, and why this is not incidental. Git-for-Windows ships xpdf's
+    pdftotext, which writes Latin-1 by default; poppler's writes UTF-8. The
+    section sign in "DRL \u00a7240(1-b)" is byte 0xA7 in Latin-1, and reading that
+    with errors="ignore" DROPPED it silently. Every "DRL \u00a7..." assertion then
+    failed on Windows and passed on Linux — the test harness, not the product,
+    was reporting a missing decretal paragraph in a document that had it.
+
+    So: ask for UTF-8 explicitly, tolerate builds that do not accept -enc, and
+    decode bytes ourselves with a Latin-1 fallback (which cannot fail and maps
+    0xA7 back to \u00a7). Never errors="ignore" — a dropped character is a
+    silently wrong assertion in either direction.
+    """
     d = tempfile.mkdtemp()
     path = os.path.join(d, f"{name}.pdf")
     fn(data, path)
     txt = os.path.join(d, "t.txt")
-    r = subprocess.run(["pdftotext", "-layout", path, txt], capture_output=True)
-    if r.returncode != 0:
+    attempts = (
+        ["pdftotext", "-enc", "UTF-8", "-layout", path, txt],
+        ["pdftotext", "-layout", path, txt],
+    )
+    for argv in attempts:
+        try:
+            r = subprocess.run(argv, capture_output=True)
+        except FileNotFoundError:
+            pytest.skip("pdftotext unavailable")
+        if r.returncode == 0 and os.path.exists(txt):
+            break
+    else:
         pytest.skip("pdftotext unavailable")
-    with open(txt, errors="ignore") as f:
-        return re.sub(r"\s+", " ", f.read())
+    raw = open(txt, "rb").read()
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        text = raw.decode("latin-1")
+    return re.sub(r"\s+", " ", text)
 
 
 @pytest.mark.parametrize("name,fn", CHILD_BEARING)
