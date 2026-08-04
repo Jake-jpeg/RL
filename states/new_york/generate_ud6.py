@@ -150,38 +150,77 @@ def generate_ud6(data, output_path):
     y -= LINE_HEIGHT
     
     # Residency checkboxes - simplified for our use case
-    residency_options = {
-        'A': "The parties were married in New York State and Plaintiff has resided in New York State for a continuous period of at least one year immediately preceding the commencement of this action.",
-        'B': "The parties have resided as married persons in New York State and Plaintiff has resided in New York State for a continuous period of at least one year immediately preceding the commencement of this action.",
-        'C': "The cause of action occurred in New York State and Plaintiff has resided in New York State for a continuous period of at least one year immediately preceding the commencement of this action.",
-        'D': "The cause of action occurred in New York State and both parties were residents of New York State at the time of commencement of this action.",
-        'E': "The parties were married in New York State and both parties were residents of New York State at the time of commencement of this action.",
-        'F': "Either party has resided in New York State for a continuous period of at least two years immediately preceding the commencement of this action."
-    }
-    
-    for opt, text in residency_options.items():
-        box = "[X]" if residency_type == opt else "[ ]"
-        c.setFont("Times-Roman", 12)
-        c.drawString(MARGIN_LEFT + 20, y, f"{box} {opt}.")
-        y -= LINE_HEIGHT
-        y = draw_wrapped_text(c, text, MARGIN_LEFT + 50, y, CONTENT_WIDTH - 50, "Times-Roman", 12)
+    # Residence — the OFFICIAL UD-6 (rev. 3/1/26) structure, verified against
+    # https://webfiles.nycourts.gov/public/2026-04/ud-6.pdf on 2026-08-05.
+    #
+    # WHAT WAS WRONG BEFORE, in ascending order of severity:
+    #   * The old list flattened DRL 230 into six lettered options — and its
+    #     option E ("married in NYS and both parties residents at
+    #     commencement") IS NOT A PRONG OF DRL 230 AT ALL. Five prongs exist;
+    #     that was an invented sixth.
+    #   * The official form asks four questions, not six: the two-year prong
+    #     first, then the one-year prong with (a) married-in-NYS / (b)
+    #     resided-as-married-persons sub-conditions, then the two cause
+    #     prongs.
+    #   * The generator read data['residencyType'] (letters) — but DGPT sends
+    #     data['residencyBasis'] (two_year / one_year_married /
+    #     one_year_spouses / one_year_cause, derived deterministically from
+    #     the client's answers). Nothing translated, so EVERY live render
+    #     silently defaulted to checking option A whatever the facts were.
+    #     A sworn residence statement was being checked by a default.
+    #
+    # residencyBasis is authoritative; the legacy letters are honored as
+    # aliases; with NEITHER present, no box is checked — a blank box for
+    # counsel is honest, a defaulted checkmark on an affirmation is not.
+    basis = str(data.get('residencyBasis') or '').strip().lower()
+    legacy = str(data.get('residencyType') or '').strip().upper()
+    sel = {
+        'two_year': '1', 'one_year_married': '2a',
+        'one_year_spouses': '2b', 'one_year_cause': '3',
+    }.get(basis) or {'F': '1', 'A': '2a', 'B': '2b', 'C': '3', 'D': '4'}.get(legacy) or ''
+
+    def _box(mark):
+        return "[X]" if mark else "[ ]"
+
+    residence_items = [
+        ('1', None,
+         "The Plaintiff has resided in New York State for a continuous period "
+         "of at least two years immediately preceding the commencement of "
+         "this divorce action."),
+        ('2', None,
+         "The Plaintiff resided in New York State on the date of commencement "
+         "of this divorce action and for a continuous period of one year "
+         "immediately preceding the commencement of this divorce action, and:"),
+        ('2', 'a', "The parties were married in New York State."),
+        ('2', 'b', "The parties have resided as married persons in New York State."),
+        ('3', None,
+         "The cause of action occurred in New York State and Plaintiff "
+         "resided in New York State for a continuous period of at least one "
+         "year immediately preceding the commencement of this divorce action."),
+        ('4', None,
+         "The cause occurred in New York State and both parties were "
+         "residents at the time of commencement of this divorce action."),
+    ]
+    for num, sub, text in residence_items:
+        if sub is None:
+            checked = sel == num or (num == '2' and sel in ('2a', '2b'))
+            c.setFont("Times-Roman", 12)
+            c.drawString(MARGIN_LEFT + 20, y, f"{_box(checked)} {num}.")
+            y -= LINE_HEIGHT
+            y = draw_wrapped_text(c, text, MARGIN_LEFT + 50, y, CONTENT_WIDTH - 50, "Times-Roman", 12)
+        else:
+            checked = sel == num + sub
+            c.setFont("Times-Roman", 12)
+            c.drawString(MARGIN_LEFT + 50, y, f"{_box(checked)} {sub}.")
+            y -= LINE_HEIGHT
+            y = draw_wrapped_text(c, text, MARGIN_LEFT + 80, y, CONTENT_WIDTH - 80, "Times-Roman", 12)
         y -= LINE_HEIGHT * 0.3
-        
-        # Check if we need to go to next page (1 inch bottom margin = 72 points)
         if y < MARGIN_BOTTOM + LINE_HEIGHT * 4:
             c.showPage()
             y = TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
             c.setFont("Times-Roman", 12)
-    
-    y -= LINE_HEIGHT * 0.5
-    
-    # Check if remaining content fits, if not go to page 2
-    if y < MARGIN_BOTTOM + LINE_HEIGHT * 8:
-        c.showPage()
-        y = TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
-        c.setFont("Times-Roman", 12)
-    
-    # 3. Marriage info
+    y -= LINE_HEIGHT * 0.7
+
     marriage_place_display = marriage_place if marriage_place else "_________________, _____________ County, ______________"
     marriage_date_display = marriage_date if marriage_date else "________________"
     
@@ -282,7 +321,7 @@ def generate_ud6(data, output_path):
     y -= LINE_HEIGHT * 2
     
     # Affirmation under penalty of perjury
-    affirm_text = "I, ________________________ (print or type name), affirm this ___ day of ______, ____, under the penalties of perjury, under the laws of New York, which may include a fine or imprisonment, that the foregoing is true, except as to matters alleged on information and belief and as to those matters I believe it to be true, and I understand that this document may be filed in an action or proceeding in a court of law."
+    affirm_text = "I, ________________________ (print or type name), affirm this ___ day of ______, ____, under the penalties of perjury under the laws of New York, which may include a fine or imprisonment, that the foregoing is true, except as to matters alleged on information and belief and as to those matters I believe it to be true, and I understand that this document may be filed in an action or proceeding in a court of law."
     y = draw_wrapped_text(c, affirm_text, MARGIN_LEFT, y, CONTENT_WIDTH)
     y -= LINE_HEIGHT * 3
     

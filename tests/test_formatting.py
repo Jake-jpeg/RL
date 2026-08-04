@@ -236,5 +236,46 @@ def test_caption_geometry_matches_the_filed_exemplar():
         return min(w["top"] for w in words if w["text"] == text)
 
     against = row("-against-")
-    assert against - row("Plaintiff,") >= 24, "no air above -against-"
-    assert row("Defendant.") - against >= 24, "no air below -against-"
+    # Rev 2 (operator, 2026-08-05): "hit return once on each side" — a full
+    # blank line of air each side, so >= 38pt from the labels, not 24.
+    assert against - row("Plaintiff,") >= 38, "no air above -against-"
+    assert row("Defendant.") - against >= 38, "no air below -against-"
+
+
+def test_affirmation_formula_is_verbatim_cplr_2106():
+    """The statutory form (as amended eff. 2025) says "under the penalties of
+    perjury under the laws of New York" — no comma. Ours carried one. CPLR
+    2106 allows "substantially" the form, but courts have bounced creative
+    variants; verbatim is free, so be verbatim."""
+    d = tempfile.mkdtemp()
+    path = os.path.join(d, "ud6.pdf")
+    generate_ud6.generate_ud6(dict(BASE), path)
+    with pdfplumber.open(path) as pdf:
+        text = re.sub(r"\s+", " ", " ".join(p.extract_text() or "" for p in pdf.pages))
+    assert "under the penalties of perjury under the laws of New York" in text
+    assert "perjury, under the laws" not in text
+    assert "except as to matters alleged on information and belief" in text
+
+
+def test_ud6_residence_paragraph_is_the_official_structure():
+    """Official UD-6 (rev 3/1/26): FOUR options — two-year first, one-year
+    with (a)/(b) sub-conditions, then the two cause prongs. The old list had
+    six letters including an option that is not a DRL 230 prong at all, and
+    ignored the residencyBasis DGPT actually sends."""
+    d = tempfile.mkdtemp()
+    path = os.path.join(d, "ud6.pdf")
+    generate_ud6.generate_ud6(dict(BASE, residencyBasis="two_year"), path)
+    with pdfplumber.open(path) as pdf:
+        text = re.sub(r"\s+", " ", " ".join(p.extract_text() or "" for p in pdf.pages))
+    assert "[X] 1. The Plaintiff has resided in New York State for a continuous period of at least two years" in text
+    assert "The parties were married in New York State." in text
+    assert "The parties have resided as married persons in New York State." in text
+    # the invented prong must never come back
+    assert "married in New York State and both parties were residents" not in text
+    # basis mapping: one_year_married checks 2 and (a), not 1
+    generate_ud6.generate_ud6(dict(BASE, residencyBasis="one_year_married"), path)
+    with pdfplumber.open(path) as pdf:
+        text = re.sub(r"\s+", " ", " ".join(p.extract_text() or "" for p in pdf.pages))
+    assert "[X] 2. The Plaintiff resided in New York State on the date of commencement" in text
+    assert "[X] a. The parties were married in New York State." in text
+    assert "[X] 1." not in text

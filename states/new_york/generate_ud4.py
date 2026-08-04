@@ -137,7 +137,7 @@ def generate_ud4(data, output_path):
     y -= LINE_HEIGHT * 2
     
     # Affirmation under penalty of perjury
-    affirm_text = "I, ________________________ (print or type name), affirm this ___ day of ______, ____, under the penalties of perjury, under the laws of New York, which may include a fine or imprisonment, that the foregoing is true, except as to matters alleged on information and belief and as to those matters I believe it to be true, and I understand that this document may be filed in an action or proceeding in a court of law."
+    affirm_text = "I, ________________________ (print or type name), affirm this ___ day of ______, ____, under the penalties of perjury under the laws of New York, which may include a fine or imprisonment, that the foregoing is true, except as to matters alleged on information and belief and as to those matters I believe it to be true, and I understand that this document may be filed in an action or proceeding in a court of law."
     y = draw_wrapped_text(c, affirm_text, MARGIN_LEFT, y, CONTENT_WIDTH, "Times-Roman", 12)
     y -= LINE_HEIGHT * 3
     
@@ -231,7 +231,7 @@ def generate_ud4(data, output_path):
     
     # Affirmation - fill in server name or blank
     server_name_affirm = server_name if server_name else "________________________"
-    affirm_text = f"I, {server_name_affirm} (print or type name), affirm this ___ day of ______, ____, under the penalties of perjury, under the laws of New York, which may include a fine or imprisonment, that the foregoing is true, except as to matters alleged on information and belief and as to those matters I believe it to be true, and I understand that this document may be filed in an action or proceeding in a court of law."
+    affirm_text = f"I, {server_name_affirm} (print or type name), affirm this ___ day of ______, ____, under the penalties of perjury under the laws of New York, which may include a fine or imprisonment, that the foregoing is true, except as to matters alleged on information and belief and as to those matters I believe it to be true, and I understand that this document may be filed in an action or proceeding in a court of law."
     y = draw_wrapped_text(c, affirm_text, MARGIN_LEFT, y, CONTENT_WIDTH)
     y -= LINE_HEIGHT * 2
     

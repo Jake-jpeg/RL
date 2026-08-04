@@ -170,6 +170,9 @@ def draw_caption(c, county, plaintiff, defendant, title, y, index_no="",
     _dash_rule(c, y)
     y -= LEAD + 2
 
+    # Half a line of air under the top rule before the first name.
+    y -= LEAD // 2
+
     # Plaintiff
     c.setFont("Times-Roman", 12)
     fit_text(c, plaintiff + ",", MARGIN, y, name_max)
@@ -178,18 +181,20 @@ def draw_caption(c, county, plaintiff, defendant, title, y, index_no="",
     centered("Plaintiff,", y)
     label_row = y
 
-    # air / -against- / air
-    y -= LEAD * 2
+    # air / -against- / air — a FULL blank line each side, plus the row gaps.
+    # (Operator, 2026-08-05, on the first cut: "still looks a little too
+    # tight... hit return once on each side." So: one more return each side.)
+    y -= LEAD * 3
     centered("-against-", y, font="Times-Roman")
     against_row = y
-    y -= LEAD * 2
+    y -= LEAD * 3
 
     # Defendant
     c.setFont("Times-Roman", 12)
     fit_text(c, defendant + ",", MARGIN, y, name_max)
     y -= LEAD + 2
     centered(defendant_label, y)
-    y -= LEAD + 2
+    y -= LEAD + LEAD // 2 + 2
     _dash_rule(c, y)
     bottom_rule = y
 
