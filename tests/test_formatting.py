@@ -205,3 +205,36 @@ def test_fit_text_never_lets_a_name_cross_the_column():
                          "Times-Roman", used) <= 224
     # and a normal name is untouched
     assert fit_text(c, "JANE A. KIM", 72, 680, 224) == 12
+
+
+def test_caption_geometry_matches_the_filed_exemplar():
+    """The operator compared a generated caption against his own filed
+    papers (2026-08-04) and rejected the generated one on two grounds. Both
+    are pinned here against UD-6's first page.
+
+    1. The dashed rules must terminate — X included — at the right edge of
+       "SUPREME COURT OF THE STATE OF NEW YORK" ("the X is where the K in
+       New York is"). The old rules stopped ~70pt short and floated.
+    2. Breathing room: "-against-" carries a blank line of air above and
+       below, instead of the six-consecutive-row block the generators drew.
+    """
+    d = tempfile.mkdtemp()
+    path = os.path.join(d, "cap.pdf")
+    generate_ud6.generate_ud6(dict(BASE), path)
+    with pdfplumber.open(path) as pdf:
+        words = pdf.pages[0].extract_words()
+
+    header_end = max(w["x1"] for w in words if w["text"] == "YORK")
+    rules = [w for w in words if w["text"].startswith("---") and w["text"].endswith("X")]
+    assert len(rules) == 2, "caption must have a top and a bottom rule"
+    for r in rules:
+        assert abs(r["x1"] - header_end) < 6, (
+            f"rule ends at x={r['x1']:.0f}, header at x={header_end:.0f} — "
+            "the X belongs under the K in NEW YORK")
+
+    def row(text):
+        return min(w["top"] for w in words if w["text"] == text)
+
+    against = row("-against-")
+    assert against - row("Plaintiff,") >= 24, "no air above -against-"
+    assert row("Defendant.") - against >= 24, "no air below -against-"

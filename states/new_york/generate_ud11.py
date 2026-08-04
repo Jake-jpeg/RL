@@ -15,7 +15,7 @@ from reportlab.lib.pagesizes import letter
 from .children import judgment_clause, ud11_child_decrees
 from reportlab.pdfgen import canvas
 
-from .layout import TOP_Y, caption_title, fit_text
+from .layout import TOP_Y, caption_title, fit_text, draw_caption
 
 # Page dimensions
 PAGE_WIDTH, PAGE_HEIGHT = letter  # 612 x 792 points
@@ -206,57 +206,12 @@ def generate_ud11(data, output_path):
     c.drawString(MARGIN_LEFT + 50, y, "Justice/Referee")
     y -= LINE_HEIGHT * 2
     
-    # Court header - Bold (matches UD-10)
-    c.setFont("Times-Bold", 12)
-    c.drawString(MARGIN_LEFT, y, "SUPREME COURT OF THE STATE OF NEW YORK")
-    y -= LINE_HEIGHT
-    c.drawString(MARGIN_LEFT, y, f"COUNTY OF {county_upper}")
-    y -= LINE_HEIGHT * 1.5
-    
-    # Caption - dashed line format
-    c.setFont("Times-Roman", 10)
-    c.drawString(MARGIN_LEFT, y, "-" * 62 + "X")
-    y -= LINE_HEIGHT
-    
-    c.setFont("Times-Roman", 12)
-    fit_text(c, f"{plaintiff_name_upper},", MARGIN_LEFT, y, (PAGE_WIDTH/2 + 95) - (MARGIN_LEFT) - 12)  # a long name must never overprint the right caption column
-    
-    # Right side - Index No., Calendar No., and Document Title
-    right_x = PAGE_WIDTH/2 + 95
-    
-    c.setFont("Times-Roman", 12)
-    if index_number:
-        c.drawString(right_x, y, f"Index No.: {index_number}")
-    else:
-        c.drawString(right_x, y, "Index No.: _______________")
-    y -= LINE_HEIGHT
-    
-    c.setFont("Times-Italic", 12)
-    c.drawString(MARGIN_LEFT + 100, y, "Plaintiff,")
-    c.setFont("Times-Roman", 12)
-    c.drawString(right_x, y, "Calendar No.: ___________")
-    y -= LINE_HEIGHT * 1.5
-    
-    c.setFont("Times-Roman", 12)
-    c.drawString(MARGIN_LEFT + 80, y, "- against -")
-    
-    # Document title — wrapped INSIDE the caption column; flush-left one-line
-    # draw ran to x=549 (QA 2026-08-04).
-    caption_title(c, "JUDGMENT OF DIVORCE", y, right_x)
-    y -= LINE_HEIGHT * 1.5
-    
-    c.setFont("Times-Roman", 12)
-    fit_text(c, f"{defendant_name_upper},", MARGIN_LEFT, y, (PAGE_WIDTH/2 + 95) - (MARGIN_LEFT) - 12)  # a long name must never overprint the right caption column
-    y -= LINE_HEIGHT
-    
-    c.setFont("Times-Italic", 12)
-    c.drawString(MARGIN_LEFT + 100, y, "Defendant.")
-    y -= LINE_HEIGHT
-    
-    # Dashed line with X (bottom of caption)
-    c.setFont("Times-Roman", 10)
-    c.drawString(MARGIN_LEFT, y, "-" * 62 + "X")
-    y -= LINE_HEIGHT * 1.5
+    # The standard litigation caption (layout.draw_caption) — geometry
+    # matched to the operator's own filed papers: the X of each dashed
+    # rule lands at the header's right edge, and -against- gets a blank
+    # line of air on both sides.
+    y = draw_caption(c, county_upper, plaintiff_name_upper, defendant_name_upper,
+                     "JUDGMENT OF DIVORCE", y, index_no=index_number, calendar=True)
     
     # Body - double spaced
     c.setFont("Times-Roman", 12)

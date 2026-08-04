@@ -39,7 +39,7 @@ from reportlab.lib.pagesizes import letter
 from .children import stipulation_recital
 from reportlab.pdfgen import canvas
 
-from .layout import TOP_Y, caption_title, fit_text
+from .layout import TOP_Y, caption_title, fit_text, draw_caption as std_caption
 from datetime import datetime
 import re
 
@@ -172,35 +172,10 @@ class Doc:
 
 
 def draw_caption(d, county_upper, plaintiff_upper, defendant_upper, index_number):
-    c = d.c
-    c.setFont("Times-Bold", 12)
-    c.drawString(MARGIN_LEFT, d.y, "SUPREME COURT OF THE STATE OF NEW YORK")
-    d.y -= TIGHT
-    c.drawString(MARGIN_LEFT, d.y, f"COUNTY OF {county_upper}")
-    d.y -= TIGHT
-    c.setFont("Times-Roman", 12)
-    dash_w = c.stringWidth("-", "Times-Roman", 12)
-    n = max(10, int((CAPTION_DIV_X - MARGIN_LEFT) / dash_w))
-    c.drawString(MARGIN_LEFT, d.y, "-" * n + "X")
-    d.y -= TIGHT + 4
-    rows = d.y
-    fit_text(c, plaintiff_upper + ",", MARGIN_LEFT + 8, d.y, CAPTION_DIV_X - MARGIN_LEFT - 20)  # never into the right column
-    d.y -= TIGHT + 2
-    c.drawString(MARGIN_LEFT + 176, d.y, "Plaintiff,")
-    d.y -= TIGHT + 6
-    c.drawString(MARGIN_LEFT + 56, d.y, "-against-")
-    d.y -= TIGHT + 6
-    fit_text(c, defendant_upper + ",", MARGIN_LEFT + 8, d.y, CAPTION_DIV_X - MARGIN_LEFT - 20)  # never into the right column
-    d.y -= TIGHT + 2
-    c.drawString(MARGIN_LEFT + 176, d.y, "Defendant.")
-    d.y -= TIGHT + 4
-    c.drawString(MARGIN_LEFT, d.y, "-" * n + "X")
-    c.drawString(RIGHT_COL_X, rows, f"Index No.: {index_number or '______________'}")
-    # Title wrapped INSIDE the caption column, each line underlined; the
-    # one-line draw ran to x=572, 32pt past the right margin (QA 2026-08-04).
-    caption_title(c, "STIPULATION OF SETTLEMENT", rows - TIGHT - 6,
-                  RIGHT_COL_X, underline=True)
-    d.y -= TIGHT * 1.6
+    """Delegates to the shared litigation caption (layout.draw_caption) —
+    geometry matched to the operator's own filed papers."""
+    d.y = std_caption(d.c, county_upper, plaintiff_upper, defendant_upper,
+                      "STIPULATION OF SETTLEMENT", d.y, index_no=index_number)
 
 
 def generate_stipulation(data, output_path):

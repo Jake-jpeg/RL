@@ -10,7 +10,7 @@ For uncontested divorces - no children under 18.
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
-from .layout import TOP_Y, caption_title, fit_text
+from .layout import TOP_Y, caption_title, fit_text, draw_caption
 
 # Page dimensions
 PAGE_WIDTH, PAGE_HEIGHT = letter  # 612 x 792 points
@@ -121,53 +121,12 @@ def generate_ud9(data, output_path):
     # Move down past the clerk box before starting court header
     y -= LINE_HEIGHT * 5
     
-    # Court header
-    c.setFont("Times-Bold", 12)
-    c.drawString(MARGIN_LEFT, y, "SUPREME COURT OF THE STATE OF NEW YORK")
-    y -= LINE_HEIGHT
-    
-    # County - Bold
-    c.setFont("Times-Bold", 12)
-    c.drawString(MARGIN_LEFT, y, f"COUNTY OF {county_upper}")
-    y -= LINE_HEIGHT
-    
-    # Dashed line with X
-    c.setFont("Times-Roman", 12)
-    c.drawString(MARGIN_LEFT, y, "-" * 55 + "X")
-    y -= LINE_HEIGHT
-    
-    # Plaintiff name
-    c.setFont("Times-Roman", 12)
-    fit_text(c, plaintiff_name_upper + ",", MARGIN_LEFT, y, (PAGE_WIDTH/2 + 95) - (MARGIN_LEFT) - 12)  # a long name must never overprint the right caption column
-    
-    # Index No. and Calendar No. (right side)
-    c.setFont("Times-Roman", 12)
-    index_display = index_number if index_number else "____________"
-    c.drawString(PAGE_WIDTH/2 + 95, y, f"Index No.: {index_display}")
-    y -= LINE_HEIGHT
-    
-    c.setFont("Times-Italic", 12)
-    c.drawString(MARGIN_LEFT + 100, y, "Plaintiff,")
-    c.setFont("Times-Roman", 12)
-    c.drawString(PAGE_WIDTH/2 + 95, y, "Calendar No.: __________")  # 12 underscores ran to x=543
-    y -= LINE_HEIGHT * 1.2
-    
-    c.drawString(MARGIN_LEFT + 80, y, "- against -")
-    y -= LINE_HEIGHT * 1.5
-    
-    # Defendant name
-    c.setFont("Times-Roman", 12)
-    fit_text(c, defendant_name_upper + ".", MARGIN_LEFT, y, (PAGE_WIDTH/2 + 95) - (MARGIN_LEFT) - 12)  # a long name must never overprint the right caption column
-    y -= LINE_HEIGHT
-    
-    c.setFont("Times-Italic", 12)
-    c.drawString(MARGIN_LEFT + 100, y, "Defendant.")
-    y -= LINE_HEIGHT
-    
-    # Dashed line with X
-    c.setFont("Times-Roman", 12)
-    c.drawString(MARGIN_LEFT, y, "-" * 55 + "X")
-    y -= LINE_HEIGHT * 1.5
+    # The standard litigation caption (layout.draw_caption) — geometry
+    # matched to the operator's own filed papers: the X of each dashed
+    # rule lands at the header's right edge, and -against- gets a blank
+    # line of air on both sides.
+    y = draw_caption(c, county_upper, plaintiff_name_upper, defendant_name_upper,
+                     "NOTE OF ISSUE", y, index_no=index_number, calendar=True)
     
     # NO TRIAL
     c.setFont("Times-Bold", 12)

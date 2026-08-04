@@ -43,7 +43,7 @@ from reportlab.lib.pagesizes import letter
 from .children import child_count, complaint_clause
 from reportlab.pdfgen import canvas
 
-from .layout import TOP_Y, caption_title, fit_text
+from .layout import TOP_Y, caption_title, fit_text, draw_caption as std_caption
 from datetime import datetime
 import re
 
@@ -191,45 +191,13 @@ def draw_dash_rule(c, y):
 
 
 def draw_caption(c, y, county_upper, plaintiff_upper, defendant_upper, doc_title):
-    """Two-column NY pleading caption. Returns the y below the bottom rule."""
-    c.setFont("Times-Bold", 12)
-    c.drawString(MARGIN_LEFT, y, "SUPREME COURT OF THE STATE OF NEW YORK")
-    y -= TIGHT_LEADING
-    c.drawString(MARGIN_LEFT, y, f"COUNTY OF {county_upper}")
-    y -= TIGHT_LEADING
-    draw_dash_rule(c, y)
-    y -= TIGHT_LEADING + 4
-
-    row_y = []   # capture each caption row's y for the right column
-    c.setFont("Times-Roman", 12)
-    fit_text(c, plaintiff_upper + ",", MARGIN_LEFT + 8, y, (PAGE_WIDTH/2 + 95) - (MARGIN_LEFT + 8) - 12)  # a long name must never overprint the right caption column
-    row_y.append(y)
-    y -= TIGHT_LEADING + 2
-    c.drawString(MARGIN_LEFT + 176, y, "Plaintiff,")
-    row_y.append(y)
-    y -= TIGHT_LEADING + 6
-    c.drawString(MARGIN_LEFT + 56, y, "-against-")
-    row_y.append(y)
-    y -= TIGHT_LEADING + 6
-    fit_text(c, defendant_upper + ",", MARGIN_LEFT + 8, y, (PAGE_WIDTH/2 + 95) - (MARGIN_LEFT + 8) - 12)  # a long name must never overprint the right caption column
-    row_y.append(y)
-    y -= TIGHT_LEADING + 2
-    c.drawString(MARGIN_LEFT + 176, y, "Defendant.")
-    row_y.append(y)
-    y -= TIGHT_LEADING + 4
-    draw_dash_rule(c, y)
-
-    # Right column, aligned to caption rows: Index No. / title / action label.
-    c.setFont("Times-Roman", 12)
-    c.drawString(RIGHT_COL_X, row_y[0], "Index No.: ______________")
-    c.setFont("Times-Bold", 12)
-    tw = c.stringWidth(doc_title, "Times-Bold", 12)
-    c.drawString(RIGHT_COL_X, row_y[1] - 4, doc_title)
-    c.line(RIGHT_COL_X, row_y[1] - 6, RIGHT_COL_X + tw, row_y[1] - 6)
-    c.setFont("Times-Roman", 12)
-    c.drawString(RIGHT_COL_X, row_y[3], "ACTION FOR A DIVORCE")
-
-    return y - TIGHT_LEADING * 1.6
+    """Delegates to the shared litigation caption (layout.draw_caption) —
+    geometry matched to the operator's own filed papers. The complaint keeps
+    its "ACTION FOR A DIVORCE" sub-label and its blank index number (the
+    index is purchased at filing; the drafted paper leaves the blank)."""
+    return std_caption(c, county_upper, plaintiff_upper, defendant_upper,
+                       doc_title, y, index_no="",
+                       subtitle="ACTION FOR A DIVORCE")
 
 
 def draw_allegation(c, y, label, text):

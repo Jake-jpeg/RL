@@ -13,7 +13,7 @@ ONLY generated for religious ceremonies where Defendant has provided written wai
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
-from .layout import TOP_Y, caption_title, fit_text
+from .layout import TOP_Y, caption_title, fit_text, draw_caption
 from datetime import datetime
 
 # Page dimensions
@@ -105,54 +105,14 @@ def generate_ud4(data, output_path):
     
     y = TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
     
-    # Header
-    c.setFont("Times-Bold", 12)
-    c.drawString(MARGIN_LEFT, y, "SUPREME COURT OF THE STATE OF NEW YORK")
-    y -= LINE_HEIGHT
-    c.drawString(MARGIN_LEFT, y, f"COUNTY OF {county_upper}")
-    y -= LINE_HEIGHT
-    
-    # Dashed line with X (top of caption)
-    c.setFont("Times-Roman", 10)
-    c.drawString(MARGIN_LEFT, y, "-" * 62 + "X")
-    y -= LINE_HEIGHT
-    
-    # Plaintiff name
-    c.setFont("Times-Roman", 12)
-    fit_text(c, f"{plaintiff_name_upper},", MARGIN_LEFT, y, (PAGE_WIDTH/2 + 95) - (MARGIN_LEFT) - 12)  # a long name must never overprint the right caption column
-    
-    # Index No. (right side)
     index_number = data.get('indexNumber', '').strip()
-    index_display = index_number if index_number else "_______________"
-    c.drawString(PAGE_WIDTH/2 + 95, y, f"Index No.: {index_display}")
-    y -= LINE_HEIGHT
-    
-    c.setFont("Times-Italic", 12)
-    c.drawString(MARGIN_LEFT + 100, y, "Plaintiff,")
-    y -= LINE_HEIGHT * 1.5
-    
-    c.setFont("Times-Roman", 12)
-    c.drawString(MARGIN_LEFT + 80, y, "- against -")
-    
-    # Document title — wrapped INSIDE the caption column. The hand-split
-    # "REMOVAL OF BARRIERS" line was wider than the column and ran to x=544
-    # (QA 2026-08-04); caption_title re-splits to fit.
-    after = caption_title(c, "SWORN STATEMENT OF REMOVAL OF BARRIERS TO REMARRIAGE", y)
-    y = after + LINE_HEIGHT * 0.7  # preserve the old left-column flow position
-    
-    # Defendant name
-    c.setFont("Times-Roman", 12)
-    fit_text(c, f"{defendant_name_upper},", MARGIN_LEFT, y, (PAGE_WIDTH/2 + 95) - (MARGIN_LEFT) - 12)  # a long name must never overprint the right caption column
-    y -= LINE_HEIGHT
-    
-    c.setFont("Times-Italic", 12)
-    c.drawString(MARGIN_LEFT + 100, y, "Defendant.")
-    y -= LINE_HEIGHT
-    
-    # Dashed line with X (bottom of caption)
-    c.setFont("Times-Roman", 10)
-    c.drawString(MARGIN_LEFT, y, "-" * 62 + "X")
-    y -= LINE_HEIGHT * 1.5
+
+    # The standard litigation caption (layout.draw_caption) — geometry
+    # matched to the operator's own filed papers: the X of each dashed
+    # rule lands at the header's right edge, and -against- gets a blank
+    # line of air on both sides.
+    y = draw_caption(c, county_upper, plaintiff_name_upper, defendant_name_upper,
+                     "SWORN STATEMENT OF REMOVAL OF BARRIERS TO REMARRIAGE", y, index_no=index_number)
     
     # State/County line
     c.setFont("Times-Roman", 12)

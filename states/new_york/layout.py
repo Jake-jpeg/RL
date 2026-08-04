@@ -105,3 +105,104 @@ def fit_text(c, text, x, y, max_width, font="Times-Roman", size=12, min_size=8):
     c.drawString(x, y, text)
     c.setFont(font, size)
     return use
+
+
+# --- The standard litigation caption ---------------------------------------
+#
+# Rebuilt 2026-08-04 against the operator's own filed exemplar (an Answer &
+# Counterclaims out of New York County). Two things his filing does that the
+# generated captions did not:
+#
+#   * BREATHING ROOM. Every element gets its own line with air around it —
+#     name / label tight, then a full blank line either side of "-against-".
+#     The generated captions packed the whole box into six consecutive rows.
+#
+#   * THE X LANDS UNDER THE "K" IN NEW YORK. The dashed rules are exactly as
+#     wide as the court-name line, so the X terminates at the header's right
+#     edge. The generated rules were 62 ten-point dashes — they stopped ~70pt
+#     short of the header and the X floated mid-page.
+#
+# One function, all forms. UD-1 keeps its official boxed summons layout.
+
+LEAD = 14
+_HEADER = "SUPREME COURT OF THE STATE OF NEW YORK"
+
+
+def _dash_rule(c, y):
+    """Dashed rule ending in X at the header's right edge."""
+    c.setFont("Times-Roman", 12)
+    header_w = c.stringWidth(_HEADER, "Times-Bold", 12)
+    dash_w = c.stringWidth("-", "Times-Roman", 12)
+    x_w = c.stringWidth("X", "Times-Roman", 12)
+    n = max(10, int((header_w - x_w) / dash_w))
+    c.drawString(MARGIN, y, "-" * n + "X")
+
+
+def draw_caption(c, county, plaintiff, defendant, title, y, index_no="",
+                 calendar=False, defendant_label="Defendant.", subtitle=""):
+    """The full caption block. Returns the y BELOW the bottom rule, with the
+    canvas font left at Times-Roman 12.
+
+    Left column geometry (the caption box is exactly as wide as the header):
+    party names flush left, their italic labels centered under them, and
+    "-against-" centered with a blank line above and below. Right column
+    starts 24pt right of the rules' X: Index No. (and Calendar No. when
+    `calendar`) aligned with the plaintiff rows, then the document title —
+    bold, underlined, wrapped — aligned with "-against-", then any subtitle
+    (the complaint's "ACTION FOR A DIVORCE").
+    """
+    header_w = c.stringWidth(_HEADER, "Times-Bold", 12)
+    box_right = MARGIN + header_w
+    box_center = MARGIN + header_w / 2
+    right_col = box_right + 24
+    name_max = box_right - MARGIN - 4
+
+    def centered(text, yy, font="Times-Italic"):
+        c.setFont(font, 12)
+        c.drawString(box_center - c.stringWidth(text, font, 12) / 2, yy, text)
+
+    # Header
+    c.setFont("Times-Bold", 12)
+    c.drawString(MARGIN, y, _HEADER)
+    y -= LEAD
+    c.drawString(MARGIN, y, f"COUNTY OF {county}")
+    y -= LEAD
+    _dash_rule(c, y)
+    y -= LEAD + 2
+
+    # Plaintiff
+    c.setFont("Times-Roman", 12)
+    fit_text(c, plaintiff + ",", MARGIN, y, name_max)
+    plaintiff_row = y
+    y -= LEAD + 2
+    centered("Plaintiff,", y)
+    label_row = y
+
+    # air / -against- / air
+    y -= LEAD * 2
+    centered("-against-", y, font="Times-Roman")
+    against_row = y
+    y -= LEAD * 2
+
+    # Defendant
+    c.setFont("Times-Roman", 12)
+    fit_text(c, defendant + ",", MARGIN, y, name_max)
+    y -= LEAD + 2
+    centered(defendant_label, y)
+    y -= LEAD + 2
+    _dash_rule(c, y)
+    bottom_rule = y
+
+    # Right column
+    c.setFont("Times-Roman", 12)
+    c.drawString(right_col, plaintiff_row, f"Index No.: {index_no or '_______________'}")
+    if calendar:
+        c.drawString(right_col, label_row, "Calendar No.: __________")
+    title_bottom = caption_title(c, title, against_row, right_col,
+                                 underline=True)
+    if subtitle:
+        c.setFont("Times-Roman", 12)
+        c.drawString(right_col, title_bottom - 2, subtitle)
+
+    c.setFont("Times-Roman", 12)
+    return bottom_rule - LEAD * 1.5

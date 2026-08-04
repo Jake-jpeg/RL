@@ -10,7 +10,7 @@ Pro se plaintiff version (no attorney option per DivorceGPT non-lawyer platform)
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
-from .layout import TOP_Y, caption_title, fit_text
+from .layout import TOP_Y, caption_title, fit_text, draw_caption
 
 # Page dimensions
 PAGE_WIDTH, PAGE_HEIGHT = letter  # 612 x 792 points
@@ -94,60 +94,12 @@ def generate_ud5(data, output_path):
     
     y = TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
     
-    # Court header
-    c.setFont("Times-Bold", 12)
-    c.drawString(MARGIN_LEFT, y, "SUPREME COURT OF THE STATE OF NEW YORK")
-    y -= LINE_HEIGHT
-    c.drawString(MARGIN_LEFT, y, f"COUNTY OF {county_upper}")
-    y -= LINE_HEIGHT
-    
-    # Dashed line with X (top of caption)
-    c.setFont("Times-Roman", 10)
-    c.drawString(MARGIN_LEFT, y, "-" * 62 + "X")
-    y -= LINE_HEIGHT
-    
-    # Plaintiff name
-    c.setFont("Times-Roman", 12)
-    fit_text(c, f"{plaintiff_name_upper},", MARGIN_LEFT, y, (PAGE_WIDTH/2 + 95) - (MARGIN_LEFT) - 12)  # a long name must never overprint the right caption column
-    
-    # Index No. (right side)
-    index_display = index_number if index_number else "_______________"
-    c.drawString(PAGE_WIDTH/2 + 95, y, f"Index No.: {index_display}")
-    y -= LINE_HEIGHT
-    
-    c.setFont("Times-Italic", 12)
-    c.drawString(MARGIN_LEFT + 100, y, "Plaintiff,")
-    y -= LINE_HEIGHT * 1.5
-    
-    c.setFont("Times-Roman", 12)
-    c.drawString(MARGIN_LEFT + 80, y, "- against -")
-    
-    # Document title (right side, centered)
-    c.setFont("Times-Bold", 12)
-    title_text = "AFFIRMATION"
-    title_width = c.stringWidth(title_text, "Times-Bold", 12)
-    right_center = PAGE_WIDTH/2 + 95 + (PAGE_WIDTH - MARGIN_RIGHT - (PAGE_WIDTH/2 + 95)) / 2
-    c.drawString(right_center - title_width/2, y, title_text)
-    y -= LINE_HEIGHT * 1.2
-    
-    title_text2 = "OF REGULARITY"
-    title_width2 = c.stringWidth(title_text2, "Times-Bold", 12)
-    c.drawString(right_center - title_width2/2, y, title_text2)
-    y -= LINE_HEIGHT * 0.3
-    
-    # Defendant name
-    c.setFont("Times-Roman", 12)
-    fit_text(c, f"{defendant_name_upper},", MARGIN_LEFT, y, (PAGE_WIDTH/2 + 95) - (MARGIN_LEFT) - 12)  # a long name must never overprint the right caption column
-    y -= LINE_HEIGHT
-    
-    c.setFont("Times-Italic", 12)
-    c.drawString(MARGIN_LEFT + 100, y, "Defendant.")
-    y -= LINE_HEIGHT
-    
-    # Dashed line with X (bottom of caption)
-    c.setFont("Times-Roman", 10)
-    c.drawString(MARGIN_LEFT, y, "-" * 62 + "X")
-    y -= LINE_HEIGHT * 1.5
+    # The standard litigation caption (layout.draw_caption) — geometry
+    # matched to the operator's own filed papers: the X of each dashed
+    # rule lands at the header's right edge, and -against- gets a blank
+    # line of air on both sides.
+    y = draw_caption(c, county_upper, plaintiff_name_upper, defendant_name_upper,
+                     "AFFIRMATION OF REGULARITY", y, index_no=index_number)
     
     # State/County line
     c.setFont("Times-Roman", 12)
