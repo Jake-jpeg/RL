@@ -18,6 +18,8 @@ County Logic:
 
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+
+from .layout import TOP_Y, caption_title, fit_text
 from datetime import datetime
 import re
 
@@ -43,8 +45,29 @@ BOX2_RIGHT_X = PAGE_WIDTH - MARGIN_RIGHT
 
 
 def title_case(s):
-    """Convert string to title case."""
-    return ' '.join(word.capitalize() for word in s.split())
+    """Name casing that survives real surnames.
+
+    str.capitalize() lowercases everything after the first letter, so the
+    QA fixture's hyphenated surname printed as "Sampleton-vandermeer" in the
+    signature block and the stipulation preamble — a party's name, wrong, on
+    a paper they sign. Capitalize each letter that FOLLOWS a separator too
+    (hyphen, apostrophe: Sampleton-Vandermeer, O'Brien), and leave a letter
+    already inside a word alone (McKay stays McKay because we only lowercase
+    nothing — we uppercase after separators and at word starts).
+    """
+    out = []
+    for word in s.split():
+        chars = []
+        boundary = True
+        for ch in word:
+            if ch.isalpha():
+                chars.append(ch.upper() if boundary else ch.lower())
+                boundary = False
+            else:
+                chars.append(ch)
+                boundary = ch in "-'\u2019."
+        out.append("".join(chars))
+    return " ".join(out)
 
 
 def format_address_lines(address):
@@ -175,7 +198,7 @@ def generate_ud1(data, output_path):
     # PAGE 1
     # =========================================================================
     
-    y = PAGE_HEIGHT - MARGIN_TOP
+    y = TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
     
     # Header - Bold, left aligned
     c.setFont("Times-Bold", 12)
@@ -272,9 +295,9 @@ def generate_ud1(data, output_path):
     defendant_y = boxes_top_y - box_height * 0.8
     
     c.setFont("Times-Roman", 12)
-    c.drawString(box1_content_x, plaintiff_y, plaintiff_name_upper + ',')
+    fit_text(c, plaintiff_name_upper + ',', box1_content_x, plaintiff_y, (BOX2_LEFT_X) - (box1_content_x) - 12)  # a long name must never overprint the right caption column
     c.drawString(box1_content_x + 40, against_y, '-against-')
-    c.drawString(box1_content_x, defendant_y, defendant_name_upper + '.')
+    fit_text(c, defendant_name_upper + '.', box1_content_x, defendant_y, (BOX2_LEFT_X) - (box1_content_x) - 12)  # a long name must never overprint the right caption column
     
     # --- DRAW BOX BORDERS ---
     c.setStrokeColorRGB(0, 0, 0)
@@ -435,7 +458,7 @@ def generate_ud1(data, output_path):
     # FOOTER
     # =========================================================================
     c.setFont("Times-Roman", 10)
-    c.drawString(MARGIN_LEFT, MARGIN_BOTTOM - 20, "UD-1 (Summons with Notice)")
+    c.drawString(MARGIN_LEFT, MARGIN_BOTTOM - 20, "(Form UD-1)")  # same footer convention as every other form
     
     c.save()
     return output_path

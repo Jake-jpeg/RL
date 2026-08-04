@@ -42,6 +42,8 @@ from reportlab.lib.pagesizes import letter
 
 from .children import child_count, complaint_clause
 from reportlab.pdfgen import canvas
+
+from .layout import TOP_Y, caption_title, fit_text
 from datetime import datetime
 import re
 
@@ -123,7 +125,29 @@ ORDINALS = ["FIRST", "SECOND", "THIRD", "FOURTH", "FIFTH", "SIXTH", "SEVENTH",
 # ────────────────────────── helpers ──────────────────────────
 
 def title_case(s):
-    return " ".join(w.capitalize() for w in s.split())
+    """Name casing that survives real surnames.
+
+    str.capitalize() lowercases everything after the first letter, so the
+    QA fixture's hyphenated surname printed as "Sampleton-vandermeer" in the
+    signature block and the stipulation preamble — a party's name, wrong, on
+    a paper they sign. Capitalize each letter that FOLLOWS a separator too
+    (hyphen, apostrophe: Sampleton-Vandermeer, O'Brien), and leave a letter
+    already inside a word alone (McKay stays McKay because we only lowercase
+    nothing — we uppercase after separators and at word starts).
+    """
+    out = []
+    for word in s.split():
+        chars = []
+        boundary = True
+        for ch in word:
+            if ch.isalpha():
+                chars.append(ch.upper() if boundary else ch.lower())
+                boundary = False
+            else:
+                chars.append(ch)
+                boundary = ch in "-'\u2019."
+        out.append("".join(chars))
+    return " ".join(out)
 
 
 def strip_county_suffix(county):
@@ -178,7 +202,7 @@ def draw_caption(c, y, county_upper, plaintiff_upper, defendant_upper, doc_title
 
     row_y = []   # capture each caption row's y for the right column
     c.setFont("Times-Roman", 12)
-    c.drawString(MARGIN_LEFT + 8, y, plaintiff_upper + ",")
+    fit_text(c, plaintiff_upper + ",", MARGIN_LEFT + 8, y, (PAGE_WIDTH/2 + 95) - (MARGIN_LEFT + 8) - 12)  # a long name must never overprint the right caption column
     row_y.append(y)
     y -= TIGHT_LEADING + 2
     c.drawString(MARGIN_LEFT + 176, y, "Plaintiff,")
@@ -187,7 +211,7 @@ def draw_caption(c, y, county_upper, plaintiff_upper, defendant_upper, doc_title
     c.drawString(MARGIN_LEFT + 56, y, "-against-")
     row_y.append(y)
     y -= TIGHT_LEADING + 6
-    c.drawString(MARGIN_LEFT + 8, y, defendant_upper + ",")
+    fit_text(c, defendant_upper + ",", MARGIN_LEFT + 8, y, (PAGE_WIDTH/2 + 95) - (MARGIN_LEFT + 8) - 12)  # a long name must never overprint the right caption column
     row_y.append(y)
     y -= TIGHT_LEADING + 2
     c.drawString(MARGIN_LEFT + 176, y, "Defendant.")
@@ -236,7 +260,7 @@ def draw_allegation(c, y, label, text):
     needed = len(all_lines) * BODY_LEADING + PARA_GAP
     if y - needed < MARGIN_BOTTOM + BODY_LEADING:
         c.showPage()
-        y = PAGE_HEIGHT - MARGIN_TOP
+        y = TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
 
     c.setFont("Times-Bold", 12)
     c.drawString(indent, y, label_disp)
@@ -254,7 +278,7 @@ def draw_paragraph(c, y, text, leading=BODY_LEADING, x=MARGIN_LEFT,
     lines = wrap_lines(c, text, width, font, size)
     if y - len(lines) * leading < MARGIN_BOTTOM:
         c.showPage()
-        y = PAGE_HEIGHT - MARGIN_TOP
+        y = TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
     c.setFont(font, size)
     for ln in lines:
         c.drawString(x, y, ln)
@@ -371,7 +395,7 @@ def generate_complaint(data, output_path):
     c = canvas.Canvas(output_path, pagesize=letter)
 
     # ── PAGE 1: caption + allegations ──
-    y = PAGE_HEIGHT - MARGIN_TOP
+    y = TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
     y = draw_caption(c, y, county_upper, plaintiff.upper(), defendant.upper(),
                      "VERIFIED COMPLAINT")
 
@@ -407,7 +431,7 @@ def generate_complaint(data, output_path):
     # ── WHEREFORE ──
     if y < MARGIN_BOTTOM + BODY_LEADING * 5:
         c.showPage()
-        y = PAGE_HEIGHT - MARGIN_TOP
+        y = TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
     y -= PARA_GAP
     y = draw_paragraph(
         c, y,
@@ -418,7 +442,7 @@ def generate_complaint(data, output_path):
         lines = wrap_lines(c, item, CONTENT_WIDTH - 60)
         if y - (len(lines) * TIGHT_LEADING + 6) < MARGIN_BOTTOM:
             c.showPage()
-            y = PAGE_HEIGHT - MARGIN_TOP
+            y = TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
         c.setFont("Times-Roman", 12)
         c.drawString(MARGIN_LEFT + 24, y, label)
         for ln in lines:
@@ -429,7 +453,7 @@ def generate_complaint(data, output_path):
     # ── Dated + attorney signature block (right half) ──
     if y < MARGIN_BOTTOM + TIGHT_LEADING * 9:
         c.showPage()
-        y = PAGE_HEIGHT - MARGIN_TOP
+        y = TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
     y -= TIGHT_LEADING * 2
     c.setFont("Times-Roman", 12)
     c.drawString(MARGIN_LEFT, y, f"Dated: {date_signed}")
@@ -444,7 +468,7 @@ def generate_complaint(data, output_path):
 
     # ── VERIFICATION page ──
     c.showPage()
-    y = PAGE_HEIGHT - MARGIN_TOP
+    y = TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
     c.setFont("Times-Bold", 12)
     vt = "VERIFICATION"
     vw = c.stringWidth(vt, "Times-Bold", 12)

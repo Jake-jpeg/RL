@@ -12,6 +12,8 @@ ONLY generated for religious ceremonies where Defendant has provided written wai
 
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+
+from .layout import TOP_Y, caption_title, fit_text
 from datetime import datetime
 
 # Page dimensions
@@ -101,7 +103,7 @@ def generate_ud4(data, output_path):
     # PAGE 1: UD-4 Sworn Statement
     # =========================================================================
     
-    y = PAGE_HEIGHT - MARGIN_TOP
+    y = TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
     
     # Header
     c.setFont("Times-Bold", 12)
@@ -117,7 +119,7 @@ def generate_ud4(data, output_path):
     
     # Plaintiff name
     c.setFont("Times-Roman", 12)
-    c.drawString(MARGIN_LEFT, y, f"{plaintiff_name_upper},")
+    fit_text(c, f"{plaintiff_name_upper},", MARGIN_LEFT, y, (PAGE_WIDTH/2 + 95) - (MARGIN_LEFT) - 12)  # a long name must never overprint the right caption column
     
     # Index No. (right side)
     index_number = data.get('indexNumber', '').strip()
@@ -132,24 +134,15 @@ def generate_ud4(data, output_path):
     c.setFont("Times-Roman", 12)
     c.drawString(MARGIN_LEFT + 80, y, "- against -")
     
-    # Document title (right side, centered)
-    c.setFont("Times-Bold", 12)
-    right_center = PAGE_WIDTH/2 + 95 + (PAGE_WIDTH - MARGIN_RIGHT - (PAGE_WIDTH/2 + 95)) / 2
-    title_text = "SWORN STATEMENT OF"
-    c.drawString(right_center - c.stringWidth(title_text, "Times-Bold", 12)/2, y, title_text)
-    y -= LINE_HEIGHT * 1.2
-    
-    title_text2 = "REMOVAL OF BARRIERS"
-    c.drawString(right_center - c.stringWidth(title_text2, "Times-Bold", 12)/2, y, title_text2)
-    y -= LINE_HEIGHT
-    
-    title_text3 = "TO REMARRIAGE"
-    c.drawString(right_center - c.stringWidth(title_text3, "Times-Bold", 12)/2, y, title_text3)
-    y -= LINE_HEIGHT * 0.3
+    # Document title — wrapped INSIDE the caption column. The hand-split
+    # "REMOVAL OF BARRIERS" line was wider than the column and ran to x=544
+    # (QA 2026-08-04); caption_title re-splits to fit.
+    after = caption_title(c, "SWORN STATEMENT OF REMOVAL OF BARRIERS TO REMARRIAGE", y)
+    y = after + LINE_HEIGHT * 0.7  # preserve the old left-column flow position
     
     # Defendant name
     c.setFont("Times-Roman", 12)
-    c.drawString(MARGIN_LEFT, y, f"{defendant_name_upper},")
+    fit_text(c, f"{defendant_name_upper},", MARGIN_LEFT, y, (PAGE_WIDTH/2 + 95) - (MARGIN_LEFT) - 12)  # a long name must never overprint the right caption column
     y -= LINE_HEIGHT
     
     c.setFont("Times-Italic", 12)
@@ -208,7 +201,7 @@ def generate_ud4(data, output_path):
     # =========================================================================
     
     c.showPage()
-    y = PAGE_HEIGHT - MARGIN_TOP
+    y = TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
     
     # Header
     c.setFont("Times-Bold", 12)
@@ -242,14 +235,18 @@ def generate_ud4(data, output_path):
     y -= LINE_HEIGHT
     
     # Service address display
-    service_address_display = service_address if service_address else "______________________________________________________________"
+    # 58 underscores: an underscore is 6.2pt in Times 12, and this default is
+    # also drawn after "[ ]  personally at " — 58 is the longest run that stays
+    # inside the right margin from that deepest indent (174 + 58*6.2 = 534).
+    service_address_display = service_address if service_address else "_" * 58
     
     # Option 1 - Personal service
     personal_box = "[X]" if service_method == "personal" else "[ ]"
     if service_method == "personal" and service_address:
         c.drawString(MARGIN_LEFT + 20, y, f"{personal_box}  personally at {service_address_display}")
     else:
-        c.drawString(MARGIN_LEFT + 20, y, f"{personal_box}  personally at ______________________________________________________________")
+        # 58 underscores (see service_address_display above) — the 62-run ended at x=546
+        c.drawString(MARGIN_LEFT + 20, y, f"{personal_box}  personally at " + "_" * 58)
     y -= LINE_HEIGHT * 1.5
     
     # OR
@@ -269,7 +266,7 @@ def generate_ud4(data, output_path):
     if service_method == "mail" and service_address:
         c.drawString(MARGIN_LEFT + 35, y, service_address_display)
     else:
-        c.drawString(MARGIN_LEFT + 35, y, "_________________________________________________________________________")
+        c.drawString(MARGIN_LEFT + 35, y, "_" * 70)  # 73 ran to x=545, past the margin
     y -= LINE_HEIGHT * 2
     
     # Affirmation - fill in server name or blank

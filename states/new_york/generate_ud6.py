@@ -13,6 +13,8 @@ from reportlab.lib.pagesizes import letter
 from .children import affidavit_clause, ud6_economic_clause
 from reportlab.pdfgen import canvas
 
+from .layout import TOP_Y, caption_title, fit_text
+
 # Page dimensions
 PAGE_WIDTH, PAGE_HEIGHT = letter  # 612 x 792 points
 MARGIN_LEFT = 72   # 1 inch
@@ -104,7 +106,7 @@ def generate_ud6(data, output_path):
     # PAGE 1
     # =========================================================================
     
-    y = PAGE_HEIGHT - MARGIN_TOP
+    y = TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
     
     # Header
     c.setFont("Times-Bold", 12)
@@ -120,7 +122,7 @@ def generate_ud6(data, output_path):
     
     # Plaintiff name
     c.setFont("Times-Roman", 12)
-    c.drawString(MARGIN_LEFT, y, f"{plaintiff_name_upper},")
+    fit_text(c, f"{plaintiff_name_upper},", MARGIN_LEFT, y, (PAGE_WIDTH/2 + 95) - (MARGIN_LEFT) - 12)  # a long name must never overprint the right caption column
     
     # Index No. (right side)
     index_display = index_number if index_number else "_______________"
@@ -134,16 +136,14 @@ def generate_ud6(data, output_path):
     c.setFont("Times-Roman", 12)
     c.drawString(MARGIN_LEFT + 80, y, "- against -")
     
-    # Document title (right side, centered)
-    c.setFont("Times-Bold", 12)
-    right_center = PAGE_WIDTH/2 + 95 + (PAGE_WIDTH - MARGIN_RIGHT - (PAGE_WIDTH/2 + 95)) / 2
-    title_text = "AFFIRMATION OF PLAINTIFF"
-    c.drawString(right_center - c.stringWidth(title_text, "Times-Bold", 12)/2, y, title_text)
+    # Document title — wrapped INSIDE the caption column; the one-line draw
+    # ran to x=558, 18pt past the right margin (QA 2026-08-04).
+    caption_title(c, "AFFIRMATION OF PLAINTIFF", y)
     y -= LINE_HEIGHT * 1.5
     
     # Defendant name
     c.setFont("Times-Roman", 12)
-    c.drawString(MARGIN_LEFT, y, f"{defendant_name_upper},")
+    fit_text(c, f"{defendant_name_upper},", MARGIN_LEFT, y, (PAGE_WIDTH/2 + 95) - (MARGIN_LEFT) - 12)  # a long name must never overprint the right caption column
     y -= LINE_HEIGHT
     
     c.setFont("Times-Italic", 12)
@@ -179,10 +179,11 @@ def generate_ud6(data, output_path):
     y -= LINE_HEIGHT
     c.drawString(MARGIN_LEFT, y, "Defendant's Social Security Number: _____ - _____ - _________")
     y -= LINE_HEIGHT
-    c.setFont("Times-Bold", 12)
-    c.drawString(MARGIN_LEFT, y, "(YOU MUST MANUALLY WRITE IN THE FULL SOCIAL SECURITY NUMBERS ABOVE)")
+    # Wrapped: the one-line draw ran to x=565, 25pt past the right margin.
+    y = draw_wrapped_text(c, "(YOU MUST MANUALLY WRITE IN THE FULL SOCIAL SECURITY NUMBERS ABOVE)",
+                          MARGIN_LEFT, y, CONTENT_WIDTH, font_name="Times-Bold")
     c.setFont("Times-Roman", 12)
-    y -= LINE_HEIGHT * 1.5
+    y -= LINE_HEIGHT * 0.5
     
     # 2. Residency requirement
     c.drawString(MARGIN_LEFT, y, "2. The residency requirement is satisfied as follows:")
@@ -209,7 +210,7 @@ def generate_ud6(data, output_path):
         # Check if we need to go to next page (1 inch bottom margin = 72 points)
         if y < MARGIN_BOTTOM + LINE_HEIGHT * 4:
             c.showPage()
-            y = PAGE_HEIGHT - MARGIN_TOP
+            y = TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
             c.setFont("Times-Roman", 12)
     
     y -= LINE_HEIGHT * 0.5
@@ -217,7 +218,7 @@ def generate_ud6(data, output_path):
     # Check if remaining content fits, if not go to page 2
     if y < MARGIN_BOTTOM + LINE_HEIGHT * 8:
         c.showPage()
-        y = PAGE_HEIGHT - MARGIN_TOP
+        y = TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
         c.setFont("Times-Roman", 12)
     
     # 3. Marriage info
@@ -244,7 +245,7 @@ def generate_ud6(data, output_path):
     # Check if we need page break before continuing
     if y < MARGIN_BOTTOM + LINE_HEIGHT * 6:
         c.showPage()
-        y = PAGE_HEIGHT - MARGIN_TOP
+        y = TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
         c.setFont("Times-Roman", 12)
     
     # 5. Grounds for divorce
@@ -255,7 +256,7 @@ def generate_ud6(data, output_path):
     # Check page break
     if y < MARGIN_BOTTOM + LINE_HEIGHT * 4:
         c.showPage()
-        y = PAGE_HEIGHT - MARGIN_TOP
+        y = TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
         c.setFont("Times-Roman", 12)
     
     # 6. Ancillary relief - NONE for our product
@@ -274,7 +275,7 @@ def generate_ud6(data, output_path):
     # Check page break
     if y < MARGIN_BOTTOM + LINE_HEIGHT * 4:
         c.showPage()
-        y = PAGE_HEIGHT - MARGIN_TOP
+        y = TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
         c.setFont("Times-Roman", 12)
     
     # 7. Barriers to remarriage (if religious)
@@ -293,7 +294,7 @@ def generate_ud6(data, output_path):
     # Check page break
     if y < MARGIN_BOTTOM + LINE_HEIGHT * 4:
         c.showPage()
-        y = PAGE_HEIGHT - MARGIN_TOP
+        y = TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
         c.setFont("Times-Roman", 12)
     
     # 9. No other actions
@@ -306,10 +307,13 @@ def generate_ud6(data, output_path):
     y = draw_wrapped_text(c, para10, MARGIN_LEFT, y, CONTENT_WIDTH)
     y -= LINE_HEIGHT * 1.5
     
-    # Check page break before final section
-    if y < MARGIN_BOTTOM + LINE_HEIGHT * 10:
+    # Check page break before final section. 10 lines was NOT enough: para 11
+    # + the affirmation + the signature block measure ~13 lines, and the base
+    # variant squeezed through and drew the signature at y=34 — a signature
+    # block 38pt INSIDE the bottom margin (QA 2026-08-04).
+    if y < MARGIN_BOTTOM + LINE_HEIGHT * 16:
         c.showPage()
-        y = PAGE_HEIGHT - MARGIN_TOP
+        y = TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
         c.setFont("Times-Roman", 12)
     
     # 11. Guideline maintenance notice
@@ -322,6 +326,13 @@ def generate_ud6(data, output_path):
     y = draw_wrapped_text(c, affirm_text, MARGIN_LEFT, y, CONTENT_WIDTH)
     y -= LINE_HEIGHT * 3
     
+    # Never let the signature block itself enter the bottom margin, whatever
+    # the paragraphs above did.
+    if y < MARGIN_BOTTOM + LINE_HEIGHT * 4:
+        c.showPage()
+        c.setFont("Times-Roman", 12)
+        y = TOP_Y
+
     # Signature line - right side
     sig_x = PAGE_WIDTH / 2 + 20
     c.setLineWidth(0.25)

@@ -12,6 +12,8 @@ This is a post-judgment form - used after UD-11 is signed and filed.
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
+from .layout import TOP_Y, caption_title, fit_text
+
 # Page dimensions
 PAGE_WIDTH, PAGE_HEIGHT = letter  # 612 x 792 points
 MARGIN_LEFT = 72   # 1 inch
@@ -71,7 +73,7 @@ def generate_ud14(data, output_path):
     # PAGE 1 (only page)
     # =========================================================================
     
-    y = PAGE_HEIGHT - MARGIN_TOP
+    y = TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
     
     # Court header
     c.setFont("Times-Bold", 12)
@@ -86,7 +88,7 @@ def generate_ud14(data, output_path):
     y -= LINE_HEIGHT
     
     c.setFont("Times-Roman", 12)
-    c.drawString(MARGIN_LEFT, y, f"{plaintiff_name_upper},")
+    fit_text(c, f"{plaintiff_name_upper},", MARGIN_LEFT, y, (PAGE_WIDTH/2 + 95) - (MARGIN_LEFT) - 12)  # a long name must never overprint the right caption column
     
     # Right side - Index No. and document title
     right_x = PAGE_WIDTH/2 + 95
@@ -108,7 +110,7 @@ def generate_ud14(data, output_path):
     y -= LINE_HEIGHT * 1.5
     
     c.setFont("Times-Roman", 12)
-    c.drawString(MARGIN_LEFT, y, f"{defendant_name_upper},")
+    fit_text(c, f"{defendant_name_upper},", MARGIN_LEFT, y, (PAGE_WIDTH/2 + 95) - (MARGIN_LEFT) - 12)  # a long name must never overprint the right caption column
     y -= LINE_HEIGHT
     
     c.setFont("Times-Italic", 12)

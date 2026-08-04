@@ -15,6 +15,8 @@ from reportlab.lib.pagesizes import letter
 from .children import judgment_clause, ud11_child_decrees
 from reportlab.pdfgen import canvas
 
+from .layout import TOP_Y, caption_title, fit_text
+
 # Page dimensions
 PAGE_WIDTH, PAGE_HEIGHT = letter  # 612 x 792 points
 MARGIN_LEFT = 72   # 1 inch
@@ -124,7 +126,7 @@ def check_page_break(c, y, needed_space):
     if y < MARGIN_BOTTOM + needed_space:
         c.showPage()
         c.setFont("Times-Roman", 12)
-        return PAGE_HEIGHT - MARGIN_TOP
+        return TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
     return y
 
 
@@ -180,7 +182,7 @@ def generate_ud11(data, output_path):
     # PAGE 1
     # =========================================================================
     
-    y = PAGE_HEIGHT - MARGIN_TOP
+    y = TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
     
     # Header - match edited docx format
     c.setFont("Times-Roman", 12)
@@ -217,7 +219,7 @@ def generate_ud11(data, output_path):
     y -= LINE_HEIGHT
     
     c.setFont("Times-Roman", 12)
-    c.drawString(MARGIN_LEFT, y, f"{plaintiff_name_upper},")
+    fit_text(c, f"{plaintiff_name_upper},", MARGIN_LEFT, y, (PAGE_WIDTH/2 + 95) - (MARGIN_LEFT) - 12)  # a long name must never overprint the right caption column
     
     # Right side - Index No., Calendar No., and Document Title
     right_x = PAGE_WIDTH/2 + 95
@@ -238,13 +240,13 @@ def generate_ud11(data, output_path):
     c.setFont("Times-Roman", 12)
     c.drawString(MARGIN_LEFT + 80, y, "- against -")
     
-    # Document title on right side
-    c.setFont("Times-Bold", 12)
-    c.drawString(right_x, y, "JUDGMENT OF DIVORCE")
+    # Document title — wrapped INSIDE the caption column; flush-left one-line
+    # draw ran to x=549 (QA 2026-08-04).
+    caption_title(c, "JUDGMENT OF DIVORCE", y, right_x)
     y -= LINE_HEIGHT * 1.5
     
     c.setFont("Times-Roman", 12)
-    c.drawString(MARGIN_LEFT, y, f"{defendant_name_upper},")
+    fit_text(c, f"{defendant_name_upper},", MARGIN_LEFT, y, (PAGE_WIDTH/2 + 95) - (MARGIN_LEFT) - 12)  # a long name must never overprint the right caption column
     y -= LINE_HEIGHT
     
     c.setFont("Times-Italic", 12)

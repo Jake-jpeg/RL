@@ -12,6 +12,8 @@ from reportlab.lib.pagesizes import letter
 from .children import affidavit_clause
 from reportlab.pdfgen import canvas
 
+from .layout import TOP_Y, caption_title, fit_text
+
 # Page dimensions
 PAGE_WIDTH, PAGE_HEIGHT = letter  # 612 x 792 points
 MARGIN_LEFT = 72   # 1 inch
@@ -96,7 +98,7 @@ def generate_ud7(data, output_path):
     # PAGE 1
     # =========================================================================
     
-    y = PAGE_HEIGHT - MARGIN_TOP
+    y = TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
     
     # Header
     c.setFont("Times-Bold", 12)
@@ -112,7 +114,7 @@ def generate_ud7(data, output_path):
     
     # Plaintiff name
     c.setFont("Times-Roman", 12)
-    c.drawString(MARGIN_LEFT, y, f"{plaintiff_name_upper},")
+    fit_text(c, f"{plaintiff_name_upper},", MARGIN_LEFT, y, (PAGE_WIDTH/2 + 95) - (MARGIN_LEFT) - 12)  # a long name must never overprint the right caption column
     
     # Index No. (right side)
     index_display = index_number if index_number else "_______________"
@@ -126,16 +128,14 @@ def generate_ud7(data, output_path):
     c.setFont("Times-Roman", 12)
     c.drawString(MARGIN_LEFT + 80, y, "- against -")
     
-    # Document title (right side, centered)
-    c.setFont("Times-Bold", 12)
-    right_center = PAGE_WIDTH/2 + 95 + (PAGE_WIDTH - MARGIN_RIGHT - (PAGE_WIDTH/2 + 95)) / 2
-    title_text = "AFFIRMATION OF DEFENDANT"
-    c.drawString(right_center - c.stringWidth(title_text, "Times-Bold", 12)/2, y, title_text)
+    # Document title — wrapped INSIDE the caption column; the one-line draw
+    # ran to x=563, 23pt past the right margin (QA 2026-08-04).
+    caption_title(c, "AFFIRMATION OF DEFENDANT", y)
     y -= LINE_HEIGHT * 1.5
     
     # Defendant name
     c.setFont("Times-Roman", 12)
-    c.drawString(MARGIN_LEFT, y, f"{defendant_name_upper},")
+    fit_text(c, f"{defendant_name_upper},", MARGIN_LEFT, y, (PAGE_WIDTH/2 + 95) - (MARGIN_LEFT) - 12)  # a long name must never overprint the right caption column
     y -= LINE_HEIGHT
     
     c.setFont("Times-Italic", 12)
@@ -181,7 +181,7 @@ def generate_ud7(data, output_path):
     # Check page break
     if y < MARGIN_BOTTOM + LINE_HEIGHT * 8:
         c.showPage()
-        y = PAGE_HEIGHT - MARGIN_TOP
+        y = TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
         c.setFont("Times-Roman", 12)
     
     # 3. Military status
@@ -205,7 +205,7 @@ def generate_ud7(data, output_path):
     # Check page break
     if y < MARGIN_BOTTOM + LINE_HEIGHT * 8:
         c.showPage()
-        y = PAGE_HEIGHT - MARGIN_TOP
+        y = TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
         c.setFont("Times-Roman", 12)
     
     # 6. Barriers to remarriage
@@ -231,9 +231,9 @@ def generate_ud7(data, output_path):
     y -= LINE_HEIGHT * 1.5
     
     # Check page break before signature
-    if y < MARGIN_BOTTOM + LINE_HEIGHT * 10:
+    if y < MARGIN_BOTTOM + LINE_HEIGHT * 16:  # same 13-line math as UD-6
         c.showPage()
-        y = PAGE_HEIGHT - MARGIN_TOP
+        y = TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
         c.setFont("Times-Roman", 12)
     
     # 9. Guideline maintenance notice

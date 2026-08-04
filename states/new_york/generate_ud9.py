@@ -10,6 +10,8 @@ For uncontested divorces - no children under 18.
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
+from .layout import TOP_Y, caption_title, fit_text
+
 # Page dimensions
 PAGE_WIDTH, PAGE_HEIGHT = letter  # 612 x 792 points
 MARGIN_LEFT = 72   # 1 inch
@@ -98,7 +100,7 @@ def generate_ud9(data, output_path):
     # PAGE 1
     # =========================================================================
     
-    y = PAGE_HEIGHT - MARGIN_TOP
+    y = TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
     
     # Title - centered at top
     c.setFont("Times-Bold", 14)
@@ -136,7 +138,7 @@ def generate_ud9(data, output_path):
     
     # Plaintiff name
     c.setFont("Times-Roman", 12)
-    c.drawString(MARGIN_LEFT, y, plaintiff_name_upper + ",")
+    fit_text(c, plaintiff_name_upper + ",", MARGIN_LEFT, y, (PAGE_WIDTH/2 + 95) - (MARGIN_LEFT) - 12)  # a long name must never overprint the right caption column
     
     # Index No. and Calendar No. (right side)
     c.setFont("Times-Roman", 12)
@@ -147,7 +149,7 @@ def generate_ud9(data, output_path):
     c.setFont("Times-Italic", 12)
     c.drawString(MARGIN_LEFT + 100, y, "Plaintiff,")
     c.setFont("Times-Roman", 12)
-    c.drawString(PAGE_WIDTH/2 + 95, y, "Calendar No.: ____________")
+    c.drawString(PAGE_WIDTH/2 + 95, y, "Calendar No.: __________")  # 12 underscores ran to x=543
     y -= LINE_HEIGHT * 1.2
     
     c.drawString(MARGIN_LEFT + 80, y, "- against -")
@@ -155,7 +157,7 @@ def generate_ud9(data, output_path):
     
     # Defendant name
     c.setFont("Times-Roman", 12)
-    c.drawString(MARGIN_LEFT, y, defendant_name_upper + ".")
+    fit_text(c, defendant_name_upper + ".", MARGIN_LEFT, y, (PAGE_WIDTH/2 + 95) - (MARGIN_LEFT) - 12)  # a long name must never overprint the right caption column
     y -= LINE_HEIGHT
     
     c.setFont("Times-Italic", 12)

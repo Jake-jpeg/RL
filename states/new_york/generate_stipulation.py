@@ -38,6 +38,8 @@ from reportlab.lib.pagesizes import letter
 
 from .children import stipulation_recital
 from reportlab.pdfgen import canvas
+
+from .layout import TOP_Y, caption_title, fit_text
 from datetime import datetime
 import re
 
@@ -59,7 +61,29 @@ ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII
 
 
 def title_case(s):
-    return " ".join(w.capitalize() for w in s.split())
+    """Name casing that survives real surnames.
+
+    str.capitalize() lowercases everything after the first letter, so the
+    QA fixture's hyphenated surname printed as "Sampleton-vandermeer" in the
+    signature block and the stipulation preamble — a party's name, wrong, on
+    a paper they sign. Capitalize each letter that FOLLOWS a separator too
+    (hyphen, apostrophe: Sampleton-Vandermeer, O'Brien), and leave a letter
+    already inside a word alone (McKay stays McKay because we only lowercase
+    nothing — we uppercase after separators and at word starts).
+    """
+    out = []
+    for word in s.split():
+        chars = []
+        boundary = True
+        for ch in word:
+            if ch.isalpha():
+                chars.append(ch.upper() if boundary else ch.lower())
+                boundary = False
+            else:
+                chars.append(ch)
+                boundary = ch in "-'\u2019."
+        out.append("".join(chars))
+    return " ".join(out)
 
 
 def fmt_date(value):
@@ -99,14 +123,14 @@ class Doc:
 
     def __init__(self, path):
         self.c = canvas.Canvas(path, pagesize=letter)
-        self.y = PAGE_HEIGHT - MARGIN_TOP
+        self.y = TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
         self.page = 1
 
     def need(self, height):
         if self.y - height < MARGIN_BOTTOM + LEAD:
             self.c.showPage()
             self.page += 1
-            self.y = PAGE_HEIGHT - MARGIN_TOP
+            self.y = TOP_Y  # first baseline: cap tops ON the margin line (layout.py)
 
     def wrap(self, text, width, font="Times-Roman", size=12):
         words, lines, line = text.split(), [], ""
@@ -160,22 +184,22 @@ def draw_caption(d, county_upper, plaintiff_upper, defendant_upper, index_number
     c.drawString(MARGIN_LEFT, d.y, "-" * n + "X")
     d.y -= TIGHT + 4
     rows = d.y
-    c.drawString(MARGIN_LEFT + 8, d.y, plaintiff_upper + ",")
+    fit_text(c, plaintiff_upper + ",", MARGIN_LEFT + 8, d.y, CAPTION_DIV_X - MARGIN_LEFT - 20)  # never into the right column
     d.y -= TIGHT + 2
     c.drawString(MARGIN_LEFT + 176, d.y, "Plaintiff,")
     d.y -= TIGHT + 6
     c.drawString(MARGIN_LEFT + 56, d.y, "-against-")
     d.y -= TIGHT + 6
-    c.drawString(MARGIN_LEFT + 8, d.y, defendant_upper + ",")
+    fit_text(c, defendant_upper + ",", MARGIN_LEFT + 8, d.y, CAPTION_DIV_X - MARGIN_LEFT - 20)  # never into the right column
     d.y -= TIGHT + 2
     c.drawString(MARGIN_LEFT + 176, d.y, "Defendant.")
     d.y -= TIGHT + 4
     c.drawString(MARGIN_LEFT, d.y, "-" * n + "X")
     c.drawString(RIGHT_COL_X, rows, f"Index No.: {index_number or '______________'}")
-    c.setFont("Times-Bold", 12)
-    t = "STIPULATION OF SETTLEMENT"
-    c.drawString(RIGHT_COL_X, rows - TIGHT - 6, t)
-    c.line(RIGHT_COL_X, rows - TIGHT - 8, RIGHT_COL_X + c.stringWidth(t, "Times-Bold", 12), rows - TIGHT - 8)
+    # Title wrapped INSIDE the caption column, each line underlined; the
+    # one-line draw ran to x=572, 32pt past the right margin (QA 2026-08-04).
+    caption_title(c, "STIPULATION OF SETTLEMENT", rows - TIGHT - 6,
+                  RIGHT_COL_X, underline=True)
     d.y -= TIGHT * 1.6
 
 
