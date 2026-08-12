@@ -104,7 +104,7 @@ def generate_nj_insurance(data, output_path):
     if not docket:
         docket = 'FM-'
 
-    y = PAGE_HEIGHT - MARGIN_TOP
+    y = PAGE_HEIGHT - MARGIN_TOP - 10  # cap tops ON the margin line (same fix as NY layout.py)
 
     # =====================================================================
     # PRO SE HEADER BLOCK
@@ -255,7 +255,7 @@ def generate_nj_insurance(data, output_path):
     # PAGE 2 — CERTIFICATION LANGUAGE + SIGNATURE
     # =====================================================================
     c.showPage()
-    y = PAGE_HEIGHT - MARGIN_TOP
+    y = PAGE_HEIGHT - MARGIN_TOP - 10  # cap tops ON the margin line (same fix as NY layout.py)
 
     y = draw_wrapped_justified(c,
         "I certify that the foregoing statements made by me are true. I am aware "

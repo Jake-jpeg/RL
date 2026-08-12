@@ -97,7 +97,7 @@ def generate_nj_jod_cert_defendant(data, output_path):
     total_pages = 2
     page_num = 1
 
-    y = PAGE_HEIGHT - MARGIN_TOP
+    y = PAGE_HEIGHT - MARGIN_TOP - 10  # cap tops ON the margin line (same fix as NY layout.py)
 
     # =====================================================================
     # PRO SE HEADER BLOCK
@@ -287,7 +287,7 @@ def generate_nj_jod_cert_defendant(data, output_path):
     draw_page_number(c, 1, total_pages)
     c.showPage()
     page_num = 2
-    y = PAGE_HEIGHT - MARGIN_TOP
+    y = PAGE_HEIGHT - MARGIN_TOP - 10  # cap tops ON the margin line (same fix as NY layout.py)
 
     c.setFont(FONT, FONT_SIZE)
 

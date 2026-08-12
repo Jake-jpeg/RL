@@ -93,7 +93,7 @@ def generate_nj_cdr_plaintiff(data, output_path):
     if not docket:
         docket = 'FM-'
 
-    y = PAGE_HEIGHT - MARGIN_TOP
+    y = PAGE_HEIGHT - MARGIN_TOP - 10  # cap tops ON the margin line (same fix as NY layout.py)
 
     # =====================================================================
     # PRO SE HEADER BLOCK

@@ -125,7 +125,7 @@ CASES = [
 
 
 def _is_footer(w):
-    return w["top"] > BOTTOM_EDGE and re.match(r"^\(Form$|^UD-\d+a?\)$", w["text"])
+    return w["top"] > BOTTOM_EDGE and re.match(r"^\(Form$|^UD-\d+a?\)$|^Page$|^of$|^\d+$", w["text"])
 
 
 def _audit(pdf_path):
@@ -279,3 +279,60 @@ def test_ud6_residence_paragraph_is_the_official_structure():
     assert "[X] 2. The Plaintiff resided in New York State on the date of commencement" in text
     assert "[X] a. The parties were married in New York State." in text
     assert "[X] 1." not in text
+
+
+# --- New Jersey — same ruler, second state (QA'd 2026-08-05) ---------------
+# The 11 NJ generators went through the identical audit and carried the same
+# birth defects (baseline on the margin line, unguarded overflow — the JOD
+# printed body text 25pt from the paper's edge THROUGH its page number, on a
+# hard-coded two-page layout). Fixed; pinned here so both states hold the bar.
+
+from states.new_jersey import (
+    generate_nj_acknowledgment, generate_nj_cdr_defendant,
+    generate_nj_cdr_plaintiff, generate_nj_complaint, generate_nj_insurance,
+    generate_nj_jod, generate_nj_jod_cert_defendant,
+    generate_nj_jod_cert_plaintiff, generate_nj_summons,
+    generate_nj_verification,
+)
+
+NJ_BASE = {
+    "filingCounty": "Bergen",
+    "docketNumber": "FM-02-12345-26",
+    "plaintiffName": "Alexandra M. Sampleton-Vandermeer",
+    "defendantName": "Christopher J. Sampleton-Vandermeer",
+    "plaintiffAddress": "1247 Longmeadow Boulevard, Apartment 14C",
+    "plaintiffCityStateZip": "Hackensack, NJ 07601",
+    "plaintiffPhone": "(201) 555-0101",
+    "defendantAddress": "89 Shortwood Lane",
+    "defendantCityStateZip": "Teaneck, NJ 07666",
+    "defendantFullCityState": "Teaneck, New Jersey",
+    "marriageDate": "2016-06-18",
+    "ceremonyType": "civil",
+    "ceremonyLocation": "Hackensack, New Jersey",
+    "separationDate": "2024-01-03",
+    "filingDate": "2026-08-01",
+    "judgmentDate": "2026-09-15",
+    "hearingDate": "2026-09-15",
+}
+
+NJ_CASES = [
+    ("nj-complaint", generate_nj_complaint.generate_nj_complaint),
+    ("nj-summons", generate_nj_summons.generate_nj_summons),
+    ("nj-verification", generate_nj_verification.generate_nj_verification),
+    ("nj-acknowledgment", generate_nj_acknowledgment.generate_nj_acknowledgment),
+    ("nj-cdr-plaintiff", generate_nj_cdr_plaintiff.generate_nj_cdr_plaintiff),
+    ("nj-cdr-defendant", generate_nj_cdr_defendant.generate_nj_cdr_defendant),
+    ("nj-insurance", generate_nj_insurance.generate_nj_insurance),
+    ("nj-jod", generate_nj_jod.generate_nj_jod),
+    ("nj-jod-cert-p", generate_nj_jod_cert_plaintiff.generate_nj_jod_cert_plaintiff),
+    ("nj-jod-cert-d", generate_nj_jod_cert_defendant.generate_nj_jod_cert_defendant),
+]
+
+
+@pytest.mark.parametrize("name,fn", NJ_CASES, ids=[c[0] for c in NJ_CASES])
+def test_nj_form_is_court_ready(name, fn):
+    d = tempfile.mkdtemp()
+    path = os.path.join(d, f"{name}.pdf")
+    fn(dict(NJ_BASE), path)
+    findings = _audit(path)
+    assert findings == [], f"{name}: " + "; ".join(findings)

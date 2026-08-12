@@ -133,9 +133,11 @@ def draw_para_bold_prefix(c, bold_text, rest_text, x, y, max_width, line_height=
     return y
 
 
-def draw_page_number(c, page_num, total_pages):
+def draw_page_number(c, page_num, total_pages=None):
+    """total_pages=None renders "Page N" — used by the dynamic flow, which
+    cannot know the total while drawing. A wrong "of 2" is worse than none."""
     c.setFont(FONT, 10)
-    text = f"Page {page_num} of {total_pages}"
+    text = (f"Page {page_num} of {total_pages}" if total_pages else f"Page {page_num}")
     w = c.stringWidth(text, FONT, 10)
     c.drawString((PAGE_WIDTH - w) / 2, MARGIN_BOTTOM - 36, text)
 
@@ -172,10 +174,9 @@ def generate_nj_jod(data, output_path):
     ceremony_location = data.get('ceremonyLocation', '').strip()
     ceremony_label = "religious" if ceremony_type == "religious" else "civil"
 
-    total_pages = 2
     page_num = 1
 
-    y = PAGE_HEIGHT - MARGIN_TOP
+    y = PAGE_HEIGHT - MARGIN_TOP - 10  # cap tops ON the margin line (same fix as NY layout.py)
 
     # =====================================================================
     # PRO SE HEADER BLOCK
@@ -282,6 +283,20 @@ def generate_nj_jod(data, output_path):
         f"over the parties pursuant to the Rules governing the Court; and for good "
         f"cause shown;"
     )
+    _pg = [1]
+    def _room(y, lines=3):
+        """Page-break guard. The old flow drew page 1 with NO guard and a
+        hard-coded 2-page total; the QA fixture's longer names wrapped the
+        recital deeper and the ORDERED paragraph printed to y=787 — 25pt from
+        the paper's edge, THROUGH the page number (QA 2026-08-05)."""
+        if y < MARGIN_BOTTOM + lines * DOUBLE_SPACE:
+            draw_page_number(c, _pg[0])
+            c.showPage()
+            _pg[0] += 1
+            c.setFont(FONT, FONT_SIZE)
+            return PAGE_HEIGHT - MARGIN_TOP - 10
+        return y
+
     y = draw_para_bold_prefix(c, "THIS MATTER", recital_rest, MARGIN_LEFT, y, CONTENT_WIDTH, line_height=DOUBLE_SPACE)
     y -= DOUBLE_SPACE * 0.5
 
@@ -291,6 +306,7 @@ def generate_nj_jod(data, output_path):
         f"20____, by the Superior Court of New Jersey, Chancery Division, Family "
         f"Part, {filing_county} County, State of New Jersey;"
     )
+    y = _room(y)
     y = draw_para_bold_prefix(c, "", f"It is therefore {therefore_rest.strip()}", MARGIN_LEFT, y, CONTENT_WIDTH, line_height=DOUBLE_SPACE)
     y -= DOUBLE_SPACE * 0.5
 
@@ -304,22 +320,23 @@ def generate_nj_jod(data, output_path):
         f"from the obligations thereof and that the marriage between the parties is "
         f"hereby dissolved; and it is further"
     )
+    y = _room(y, 4)
     y = draw_para_bold_prefix(c, "ORDERED and ADJUDGED", dissolution_rest, MARGIN_LEFT, y, CONTENT_WIDTH, line_height=DOUBLE_SPACE)
 
     # =====================================================================
     # PAGE BREAK
     # =====================================================================
-    draw_page_number(c, 1, total_pages)
-    c.showPage()
-    page_num = 2
-    y = PAGE_HEIGHT - MARGIN_TOP
-    c.setFont(FONT, FONT_SIZE)
+    # The old hard page break lived here, with page totals fixed at 2.
+    # Pagination is dynamic now — the remaining decrees start a fresh page
+    # only when they need one.
+    y = _room(y, 6)
 
     # No alimony
     alimony_rest = (
         "that neither party shall have an alimony "
         "obligation to the other; and it is further"
     )
+    y = _room(y)
     y = draw_para_bold_prefix(c, "ORDERED AND ADJUDGED,", alimony_rest, MARGIN_LEFT, y, CONTENT_WIDTH, line_height=DOUBLE_SPACE)
     y -= DOUBLE_SPACE * 0.5
 
@@ -329,6 +346,7 @@ def generate_nj_jod(data, output_path):
         "in that there is no real property, personal property nor any debt to "
         "be divided between them; and it is further"
     )
+    y = _room(y)
     y = draw_para_bold_prefix(c, "ORDERED", equitable_rest, MARGIN_LEFT, y, CONTENT_WIDTH, line_height=DOUBLE_SPACE)
     y -= DOUBLE_SPACE * 0.5
 
@@ -370,7 +388,7 @@ def generate_nj_jod(data, output_path):
     c.setFont(FONT, FONT_SIZE)
     c.drawString(sig_x, y, "Hon. ________________________, J.S.C.")
 
-    draw_page_number(c, page_num, total_pages)
+    draw_page_number(c, _pg[0])
     c.save()
     return output_path
 

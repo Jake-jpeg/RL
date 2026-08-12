@@ -143,7 +143,7 @@ def generate_nj_summons(data, output_path):
 
     total_pages = 2
 
-    y = PAGE_HEIGHT - MARGIN_TOP
+    y = PAGE_HEIGHT - MARGIN_TOP - 10  # cap tops ON the margin line (same fix as NY layout.py)
 
     # =====================================================================
     # PRO SE HEADER BLOCK
@@ -243,7 +243,16 @@ def generate_nj_summons(data, output_path):
     prefix = "TO THE DEFENDANT(S) NAMED ABOVE:"
     prefix_w = c.stringWidth(prefix, FONT_BOLD, FONT_SIZE)
     c.setFont(FONT, FONT_SIZE)
-    c.drawString(MARGIN_LEFT + prefix_w + 20, y, d_name_upper)
+    # Shrink-to-fit: the QA fixture's 281pt surname ran to x=583, 43pt past
+    # the right margin. Same rule as NY: a party's name is never truncated —
+    # it shrinks until it fits the room that exists.
+    _x = MARGIN_LEFT + prefix_w + 20
+    _sz = FONT_SIZE
+    while _sz > 8 and c.stringWidth(d_name_upper, FONT_BOLD, _sz) > (PAGE_WIDTH - MARGIN_RIGHT) - _x:
+        _sz -= 0.5
+    c.setFont(FONT_BOLD, _sz)
+    c.drawString(_x, y, d_name_upper)
+    c.setFont(FONT, FONT_SIZE)
     y -= SINGLE_SPACE * 1.5
 
     c.setFont(FONT, FONT_SIZE)
@@ -301,7 +310,7 @@ def generate_nj_summons(data, output_path):
     # =====================================================================
     draw_page_number(c, 1, total_pages)
     c.showPage()
-    y = PAGE_HEIGHT - MARGIN_TOP
+    y = PAGE_HEIGHT - MARGIN_TOP - 10  # cap tops ON the margin line (same fix as NY layout.py)
     c.setFont(FONT, FONT_SIZE)
 
     # Paragraph 4: Legal services / lawyer referral + URL (page 2)

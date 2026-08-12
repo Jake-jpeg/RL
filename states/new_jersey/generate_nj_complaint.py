@@ -109,7 +109,7 @@ def check_page_break(c, y, needed, page_num, total_pages):
         draw_page_number(c, page_num, total_pages)
         c.showPage()
         page_num += 1
-        y = PAGE_HEIGHT - MARGIN_TOP
+        y = PAGE_HEIGHT - MARGIN_TOP - 10  # cap tops ON the margin line (same fix as NY layout.py)
     return y, page_num
 
 
@@ -165,7 +165,7 @@ def generate_nj_complaint(data, output_path):
     total_pages = 2  # complaint + signature
     page_num = 1
 
-    y = PAGE_HEIGHT - MARGIN_TOP
+    y = PAGE_HEIGHT - MARGIN_TOP - 10  # cap tops ON the margin line (same fix as NY layout.py)
 
     # =====================================================================
     # PRO SE HEADER BLOCK

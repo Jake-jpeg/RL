@@ -94,7 +94,7 @@ def generate_nj_acknowledgment(data, output_path):
     if not docket:
         docket = 'FM-'
 
-    y = PAGE_HEIGHT - MARGIN_TOP
+    y = PAGE_HEIGHT - MARGIN_TOP - 10  # cap tops ON the margin line (same fix as NY layout.py)
 
     # =====================================================================
     # PRO SE HEADER BLOCK
@@ -244,6 +244,14 @@ def generate_nj_acknowledgment(data, output_path):
     # =====================================================================
     y -= DOUBLE_SPACE * 2.5
 
+    # The signature block printed its last line at y=725 — 5pt into the
+    # bottom margin (QA 2026-08-05). Never let a signature enter the margin.
+    if y < MARGIN_BOTTOM + LINE_HEIGHT * 5:
+        draw_page_number(c, 1, 2)
+        c.showPage()
+        c.setFont(FONT, FONT_SIZE)
+        y = PAGE_HEIGHT - MARGIN_TOP - 10
+
     sig_x = PAGE_WIDTH / 2 + 20
     c.setLineWidth(0.5)
     c.line(sig_x, y, PAGE_WIDTH - MARGIN_RIGHT, y)
@@ -263,7 +271,7 @@ def generate_nj_acknowledgment(data, output_path):
     # PAGE 2 — VERIFICATION (Notary Jurat)
     # =====================================================================
     c.showPage()
-    y = PAGE_HEIGHT - MARGIN_TOP
+    y = PAGE_HEIGHT - MARGIN_TOP - 10  # cap tops ON the margin line (same fix as NY layout.py)
 
     # Title — centered, bold, underlined
     c.setFont(FONT_BOLD, FONT_SIZE)

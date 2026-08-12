@@ -108,7 +108,7 @@ def generate_nj_verification(data, output_path):
 
     total_pages = 1  # single page form
 
-    y = PAGE_HEIGHT - MARGIN_TOP
+    y = PAGE_HEIGHT - MARGIN_TOP - 10  # cap tops ON the margin line (same fix as NY layout.py)
 
     # =====================================================================
     # PRO SE HEADER BLOCK

@@ -105,7 +105,7 @@ def _draw_cdr_form(c, data, party_type):
     else:
         certifying_name = d_name
 
-    y = PAGE_HEIGHT - MARGIN_TOP
+    y = PAGE_HEIGHT - MARGIN_TOP - 10  # cap tops ON the margin line (same fix as NY layout.py)
 
     # =====================================================================
     # PRO SE HEADER BLOCK
