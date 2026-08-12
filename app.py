@@ -160,6 +160,30 @@ STATE_CONFIGS = {
         'phase2': ['ud5', 'ud6', 'ud7', 'ud9', 'ud10', 'ud11', 'ud12'],
         'phase3': ['ud14', 'ud15'],
     },
+    # New Jersey — the 11 generators existed since the 08-02 merge and were
+    # QA'd to the same bar as NY (RL cde44ca), but were never REGISTERED:
+    # this dict is the routing table, and /generate/nj/* raised
+    # "Unsupported state: nj" while every generator sat importable one
+    # directory away. Found by the operator assistant, 2026-08-12.
+    'nj': {
+        'name': 'New Jersey',
+        'module': 'new_jersey',
+        'forms': {
+            'complaint': 'generate_nj_complaint',
+            'summons': 'generate_nj_summons',
+            'verification': 'generate_nj_verification',
+            'acknowledgment': 'generate_nj_acknowledgment',
+            'cdr_plaintiff': 'generate_nj_cdr_plaintiff',
+            'cdr_defendant': 'generate_nj_cdr_defendant',
+            'insurance': 'generate_nj_insurance',
+            'jod': 'generate_nj_jod',
+            'jod_cert_plaintiff': 'generate_nj_jod_cert_plaintiff',
+            'jod_cert_defendant': 'generate_nj_jod_cert_defendant',
+        },
+        'phase1': ['complaint', 'summons', 'verification'],
+        'phase2': ['acknowledgment', 'cdr_plaintiff', 'cdr_defendant', 'insurance'],
+        'phase3': ['jod', 'jod_cert_plaintiff', 'jod_cert_defendant'],
+    },
 }
 
 
